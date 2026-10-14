@@ -1,4 +1,4 @@
-package com.pedropalazon.sales_manager_backend.common.controller;
+package com.pedropalazon.sales_manager_backend.shared.web;
 
 import java.time.Instant;
 import java.util.Map;

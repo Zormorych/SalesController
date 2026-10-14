@@ -1,4 +1,4 @@
-package com.pedropalazon.sales_manager_backend.common.controller;
+package com.pedropalazon.sales_manager_backend.shared.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
