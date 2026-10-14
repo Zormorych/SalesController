@@ -1,0 +1,216 @@
+# Roadmap — SalesController
+
+Backend (Spring Boot 4.1, Java 21, PostgreSQL) para gestionar la venta de camisetas y otros productos deportivos, organizado como un **ERP modular**: funcionalidades parecidas en el mismo módulo, funcionalidades distintas en módulos distintos.
+
+Objetivos:
+
+1. **Práctico:** dejar de montar a mano el Excel del pedido al fabricante y llevar control de clientes, cobros, costes y beneficio.
+2. **Aprender:** arquitectura modular, API REST, tests y, más adelante, frontend separado, seguridad y despliegue.
+
+---
+
+## 1. Arquitectura
+
+### Monolito modular con Spring Modulith
+
+- Un solo proyecto Maven y un solo `.jar`.
+- Cada **módulo de negocio es un paquete directo** bajo `com.pedropalazon.sales_manager_backend`.
+- Lo que está en la raíz del paquete del módulo es su **API pública**. Lo que está en subpaquetes (`internal`, etc.) es privado.
+- Un test (`ModularityTests`) verifica con Spring Modulith que ningún módulo accede a las clases internas de otro ni hay dependencias circulares. Si se rompe un límite, el build falla.
+- Los módulos se comunican **llamando a la API pública** del otro módulo o **publicando eventos** de Spring cuando el que emite no debe conocer al que reacciona.
+
+### Módulos
+
+| Módulo (paquete) | Responsabilidad | Depende de |
+|---|---|---|
+| `shared` | Errores HTTP comunes, utilidades de dinero, configuración (OpenAPI, CORS). Más adelante, seguridad. | — |
+| `catalog` | Productos (precio de venta y coste) y personalizaciones (precio y coste). Tallas. | `shared` |
+| `customers` | Clientes: nombre, teléfono de WhatsApp, notas. | `shared` |
+| `sales` | Pedidos de cliente, líneas, personalizaciones de línea, estados, totales y beneficio. | `catalog`, `customers` |
+| `payments` | Cobros (pagos parciales) de un pedido: pagado y pendiente. | `sales` |
+| `purchasing` | Lotes al fabricante: agrupar líneas pendientes, generar el Excel, recepción. | `sales` |
+| `reports` | Informes de solo lectura: ventas, costes y beneficio por periodo, pedido o lote. | `sales`, `payments`, `purchasing` |
+
+### Estructura interna de cada módulo
+
+```text
+sales/
+├── SalesOrderApi.java          ← API pública (interfaz o servicio) que usan otros módulos
+├── SalesOrderLineSummary.java  ← DTOs públicos que expone a otros módulos
+└── internal/
+    ├── SalesOrder.java         ← entidades JPA
+    ├── SalesOrderRepository.java
+    ├── SalesOrderService.java
+    └── web/
+        ├── SalesOrderController.java
+        └── CreateSalesOrderRequest.java
+```
+
+Solo se crean las clases que hagan falta: nada de carpetas vacías.
+
+### Reglas transversales
+
+- **Dinero:** siempre `BigDecimal` (escala 2, `RoundingMode.HALF_UP`). Nunca `double` ni `float`.
+- **Fechas:** `LocalDate` y `LocalDateTime`.
+- **Código en inglés** (clases, tablas, columnas). Documentación y mensajes de la API en español.
+- **Snapshots:** al añadir un producto o una personalización a una línea se **copian** su nombre, precio y coste. Cambiar precios en el catálogo no altera los pedidos antiguos.
+- **Precios configurables:** ningún precio queda en el código. Todo se crea y edita desde la API.
+- **Sin borrado físico** de datos de negocio: se desactiva o se cancela.
+- **Migraciones:** Flyway, una por cambio de esquema (`V1__...`, `V2__...`). Hibernate en `validate` o `none`.
+- **Errores:** respuestas `ProblemDetail` (RFC 9457) con los errores de validación por campo, para que el frontend pueda mostrarlos.
+- **Tests:** unitarios para los cálculos y las transiciones de estado, `@DataJpaTest` para las consultas, `@WebMvcTest` para la API y `ModularityTests` para los límites entre módulos.
+
+---
+
+## 2. Modelo de dominio
+
+```text
+catalog
+  Product           id, name, salePrice, purchaseCost, active
+                    ej.: "Camiseta Fan" 15,00 / 6,50 · "Camiseta Player" 17,00 / ? · "Chándal" 50,00 / 34,00
+  Customization     id, name, salePrice, purchaseCost, active
+                    ej.: "Nombre + número" 2,00 / ? · "Parche" 1,00 / ?
+  Size (enum)       S, M, L, XL, XXL, KIDS_16 … KIDS_28   (común a todos los productos)
+
+customers
+  Customer          id, name, phone, notes
+
+sales
+  SalesOrder        id, orderNumber (SO-2026-000001), customer, orderDate, status, notes
+  SalesOrderLine    id, order, productId, productName*, kitName (texto libre: "Selección Española blanca 2 estrellas"),
+                    size, unitSalePrice*, unitPurchaseCost*, status
+  LineCustomization id, line, customizationId, customizationName*, value ("WILLIAMS JR 17"),
+                    salePrice*, purchaseCost*
+  (* = snapshot copiado del catálogo y editable: descuento, amigo → 0 €)
+
+payments
+  Payment           id, salesOrderId, amount, paymentDate, notes
+
+purchasing
+  FactoryBatch      id, batchNumber, createdAt, status (OPEN, SENT, RECEIVED), shippingCost, notes
+  (cada SalesOrderLine pertenece como mucho a un lote)
+  (shippingCost es editable; el valor por defecto, normalmente 4,00 €, lo propone el frontend, no el backend)
+```
+
+**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Desde cualquiera de los anteriores a `DELIVERED` se puede pasar a `CANCELLED`.
+
+**Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito.
+
+**Cálculos** (no se guardan en BD, se calculan):
+
+- Venta de la línea = `unitSalePrice` + Σ `salePrice` de sus personalizaciones.
+- Coste de la línea = `unitPurchaseCost` + Σ `purchaseCost` de sus personalizaciones.
+- Beneficio de la línea = venta − coste.
+- Envío repartido = `shippingCost` del lote ÷ número de líneas no canceladas del lote, a partes iguales por camiseta. Solo se aplica a las líneas que están en un lote.
+- Beneficio real de la línea = beneficio de la línea − envío repartido.
+- Total del pedido = Σ de las líneas no canceladas. Pendiente de cobro = total − Σ pagos.
+
+---
+
+## 3. Forma de trabajar
+
+- Cada paso va en **su propia rama**, creada desde `main`, con **commits pequeños**: uno por cada punto de la lista de commits del paso.
+- Formato de commit: `<tipo>: <descripción>` con tipo `feat`, `fix`, `refactor`, `test`, `docs` o `chore`.
+- Antes de cada commit: `.\mvnw.cmd test` en verde.
+- Al terminar un paso: push de la rama → Pull Request a `main` → revisión → merge. Después, siguiente paso.
+- Claude no hace commit ni push salvo que se le pida expresamente.
+
+---
+
+## 4. Pasos
+
+### Paso 0 — Base modular · rama `chore/modular-base`
+
+Partimos del trabajo ya hecho en `feature/product-crud`: docker-compose, perfiles `dev` y `test`, H2 para tests y `HealthController`.
+
+Commits:
+
+1. `chore: remove previous plan files and add roadmap` — borra `AGENTS.md` e `IMPLEMENTATION_PLAN.md` y añade este documento.
+2. `chore: add spring modulith and modularity test` — dependencias de Spring Modulith y `ModularityTests`.
+3. `refactor: move health endpoint to shared module` — `HealthController` pasa a `shared`.
+4. `feat: add global error handling with problem details` — `@RestControllerAdvice` con 404, 400 de validación, 409 de regla de negocio y 500 genérico.
+5. `chore: add openapi documentation` — springdoc y Swagger UI en `/swagger-ui.html`.
+6. `docs: add readme with local setup` — cómo arrancar PostgreSQL con Docker y la app con el perfil `dev` en Windows.
+
+Hecho cuando: la app arranca contra PostgreSQL, Swagger responde y pasan `ModularityTests` y el resto de tests.
+
+### Paso 1 — Catálogo · rama `feature/catalog`
+
+Commits:
+
+1. `refactor: reshape product as catalog item with prices` — `Product` con `name`, `salePrice`, `purchaseCost` y `active`. Se eliminan `teamName`, el enum `ProductType` y `imagePath`: la equipación va como texto en la línea y la app no guarda imágenes.
+2. `feat: add product migration, repository and service`
+3. `feat: add product REST endpoints` — listar (activos o todos), crear, editar, activar y desactivar.
+4. `feat: add customization catalog` — entidad, migración y endpoints.
+5. `feat: add size enum`
+6. `test: cover catalog validation and endpoints` — precios ≥ 0, nombre obligatorio, etc.
+
+### Paso 2 — Clientes · rama `feature/customers`
+
+1. `feat: add customer entity and migration`
+2. `feat: add customer REST endpoints` — CRUD y búsqueda por nombre o teléfono.
+3. `test: cover customer endpoints`
+
+### Paso 3 — Pedidos de cliente · rama `feature/sales-orders`
+
+1. `feat: add sales order and line entities with migration`
+2. `feat: add order number generation`
+3. `feat: create order with lines copying catalog prices` — incluye las personalizaciones de cada línea.
+4. `feat: allow manual price override on lines and customizations`
+5. `feat: compute line and order totals and profit`
+6. `feat: edit and cancel orders` — solo si sus líneas siguen `PENDING`.
+7. `test: cover totals, profit and order rules`
+
+### Paso 4 — Cobros · rama `feature/payments`
+
+1. `feat: add payment entity and migration`
+2. `feat: register and list payments for an order`
+3. `feat: expose paid and pending amounts in order detail`
+4. `test: cover partial payments and overpayment rule`
+
+### Paso 5 — Lotes al fabricante · rama `feature/factory-batches`
+
+1. `feat: list pending order lines`
+2. `feat: create factory batch from selected lines` — una línea no puede estar en dos lotes.
+3. `feat: add editable shipping cost to batch`
+4. `feat: mark batch as sent and lines as ordered`
+5. `test: cover batch creation rules and shipping allocation`
+
+### Paso 6 — Excel del fabricante · rama `feature/factory-excel`
+
+1. `chore: add apache poi dependency`
+2. `feat: generate factory batch excel` — un bloque por camiseta: **arriba un marco blanco** para pegar la captura y **justo debajo** la equipación, el tipo de producto (Fan, Player…), la talla y las personalizaciones si las tiene (por ejemplo "WILLIAMS JR 17").
+   El Excel **no lleva precios, costes ni cálculos**. Eso va en los informes (Paso 8).
+3. `feat: add excel download endpoint`
+4. `test: cover excel content`
+
+### Paso 7 — Recepción y entrega · rama `feature/receive-deliver`
+
+1. `feat: mark batch as received`
+2. `feat: mark lines as delivered`
+3. `feat: derive order status from its lines`
+4. `test: cover status transitions`
+
+### Paso 8 — Informes · rama `feature/reports`
+
+1. `feat: sales, cost and profit summary by date range` — el coste incluye el envío repartido.
+2. `feat: profit by batch` — incluye el envío del lote.
+3. `feat: pending counts (to order, to receive, to deliver, to collect)`
+4. `test: cover report calculations`
+
+---
+
+## 5. Después del MVP
+
+- **Catálogo de equipaciones:** guardar "Selección Española blanca 2 estrellas" para elegirla de una lista en vez de escribirla.
+- **Frontend Angular** en un repositorio aparte, consumiendo esta API.
+- **Seguridad:** Spring Security con login y JWT.
+- **Despliegue:** Dockerfile, perfil `prod`, front y back desplegados, HTTPS y copias de seguridad.
+
+---
+
+## 6. Decisiones
+
+- [x] Spring Modulith con los módulos de la sección 1.
+- [x] Envío por lote: importe editable que se reparte a partes iguales entre las camisetas no canceladas del lote. El valor por defecto (normalmente 4,00 €) lo pone el frontend.
+- [ ] Coste real de "Camiseta Player" y de cada personalización. Es un dato del catálogo que se mete desde la API, así que no bloquea.
