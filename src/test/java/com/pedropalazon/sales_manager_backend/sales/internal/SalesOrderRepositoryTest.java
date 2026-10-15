@@ -71,6 +71,59 @@ class SalesOrderRepositoryTest {
     }
 
     @Test
+    void givenSavedLine_whenReplacedAndReloaded_thenOldCustomizationRowsAreDeleted() {
+        Long id = repository.save(orderWithOneCustomizedLine()).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        SalesOrderLine line = repository.findById(id).orElseThrow().getLines().getFirst();
+        SalesOrderLine draft = new SalesOrderLine(PRODUCT_ID, "Camiseta Fan", "España roja", ClothingSize.L,
+                new BigDecimal("16.00"), new BigDecimal("7.00"));
+        draft.addCustomization(new LineCustomization(CUSTOMIZATION_ID, "Nombre + número", "LUCAS 9",
+                new BigDecimal("2.00"), new BigDecimal("1.20")));
+        line.replaceWith(draft);
+        entityManager.flush();
+        entityManager.clear();
+
+        SalesOrderLine reloaded = repository.findById(id).orElseThrow().getLines().getFirst();
+        assertThat(reloaded.getKitName()).isEqualTo("España roja");
+        assertThat(reloaded.getSize()).isEqualTo(ClothingSize.L);
+        assertThat(reloaded.getCustomizations()).extracting(LineCustomization::getCustomText).containsExactly("LUCAS 9");
+        assertThat(countRows("line_customizations")).isEqualTo(1);
+        assertThat(countRows("sales_order_lines")).isEqualTo(1);
+    }
+
+    @Test
+    void givenSavedOrder_whenCancelledAndReloaded_thenOrderAndLineStatusesArePersisted() {
+        Long id = repository.save(orderWithOneCustomizedLine()).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        repository.findById(id).orElseThrow().cancel();
+        entityManager.flush();
+        entityManager.clear();
+
+        SalesOrder reloaded = repository.findById(id).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(SalesOrderStatus.CANCELLED);
+        assertThat(reloaded.getLines()).allMatch(SalesOrderLine::isCancelled);
+    }
+
+    private static SalesOrder orderWithOneCustomizedLine() {
+        SalesOrder order = new SalesOrder("SO-2026-000001", CUSTOMER_ID, LocalDate.of(2026, 10, 15), null);
+        SalesOrderLine line = new SalesOrderLine(PRODUCT_ID, "Camiseta Fan", "Selección Española blanca 2 estrellas",
+                ClothingSize.M, new BigDecimal("15.00"), new BigDecimal("6.50"));
+        line.addCustomization(new LineCustomization(CUSTOMIZATION_ID, "Nombre + número", "WILLIAMS JR 17",
+                new BigDecimal("2.00"), new BigDecimal("1.20")));
+        order.addLine(line);
+        return order;
+    }
+
+    private long countRows(String table) {
+        return ((Number) entityManager.getEntityManager()
+                .createNativeQuery("select count(*) from " + table).getSingleResult()).longValue();
+    }
+
+    @Test
     void givenSequence_whenAskingTwice_thenNumbersIncrease() {
         long first = repository.nextOrderSequence();
         long second = repository.nextOrderSequence();
