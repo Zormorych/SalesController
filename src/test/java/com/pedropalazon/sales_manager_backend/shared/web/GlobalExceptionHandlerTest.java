@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -60,6 +61,15 @@ class GlobalExceptionHandlerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Error inesperado"))
                 .andExpect(content().string(not(containsString("secreto interno"))));
+    }
+
+    @Test
+    void givenDataIntegrityViolation_whenRequested_thenReturnsConflictWithoutDatabaseDetails() throws Exception {
+        mockMvc.perform(get("/test-errors/data-conflict"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Operación no permitida"))
+                .andExpect(jsonPath("$.detail").value("Los datos entran en conflicto con otros ya guardados."))
+                .andExpect(content().string(not(containsString("uk_products_name"))));
     }
 
     @Test
@@ -142,6 +152,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/business-rule")
         void businessRule() {
             throw new BusinessRuleException("El pedido ya está entregado");
+        }
+
+        @GetMapping("/data-conflict")
+        void dataConflict() {
+            throw new DataIntegrityViolationException("duplicate key value violates unique constraint uk_products_name");
         }
 
         @GetMapping("/unexpected")

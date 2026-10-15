@@ -70,7 +70,8 @@ catalog
                     ej.: "Camiseta Fan" 15,00 / 6,50 · "Camiseta Player" 17,00 / ? · "Chándal" 50,00 / 34,00
   Customization     id, name, salePrice, purchaseCost, active
                     ej.: "Nombre + número" 2,00 / ? · "Parche" 1,00 / ?
-  Size (enum)       S, M, L, XL, XXL, KIDS_16 … KIDS_28   (común a todos los productos)
+  ClothingSize (enum) S, M, L, XL, XXL, KIDS_16 … KIDS_28   (común a todos los productos; no se llama
+                    Size para no chocar con la anotación de validación @Size)
 
 customers
   Customer          id, name, phone, notes
@@ -138,12 +139,10 @@ Hecho cuando: la app arranca contra PostgreSQL, Swagger responde y pasan `Modula
 
 Commits:
 
-1. `refactor: reshape product as catalog item with prices` — `Product` con `name`, `salePrice`, `purchaseCost` y `active`. Se eliminan `teamName`, el enum `ProductType` y `imagePath`: la equipación va como texto en la línea y la app no guarda imágenes.
-2. `feat: add product migration, repository and service`
-3. `feat: add product REST endpoints` — listar (activos o todos), crear, editar, activar y desactivar.
-4. `feat: add customization catalog` — entidad, migración y endpoints.
-5. `feat: add size enum`
-6. `test: cover catalog validation and endpoints` — precios ≥ 0, nombre obligatorio, etc.
+1. `refactor: reshape product as catalog item with prices` — `Product` con `name`, `salePrice`, `purchaseCost` y `active`, migración `V1`, repositorio. Se eliminan `teamName`, `ProductType` e `imagePath`: la equipación va como texto en la línea y la app no guarda imágenes.
+2. `feat: add product REST endpoints` — `/api/catalog/products`: listar (activos o todos), ver, crear, editar, activar y desactivar. Nombre único sin distinguir mayúsculas. Precios con 2 decimales como máximo.
+3. `feat: add customization catalog` — lo mismo en `/api/catalog/customizations`.
+4. `feat: add size catalog` — enum `ClothingSize` y `GET /api/catalog/sizes`.
 
 ### Paso 2 — Clientes · rama `feature/customers`
 

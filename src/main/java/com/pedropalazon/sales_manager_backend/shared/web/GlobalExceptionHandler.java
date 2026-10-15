@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -37,6 +38,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessRuleException.class)
     ProblemDetail handleBusinessRule(BusinessRuleException exception) {
         return problem(HttpStatus.CONFLICT, "Operación no permitida", exception.getMessage());
+    }
+
+    // Red de seguridad: si una restricción de BD (único, check...) salta, es un conflicto, no un error del servidor
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        log.warn("Data integrity violation", exception);
+        return problem(HttpStatus.CONFLICT, "Operación no permitida",
+                "Los datos entran en conflicto con otros ya guardados.");
     }
 
     @ExceptionHandler(Exception.class)
