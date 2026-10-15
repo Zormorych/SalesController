@@ -95,7 +95,7 @@ purchasing
 
 **Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Desde cualquiera de los anteriores a `DELIVERED` se puede pasar a `CANCELLED`.
 
-**Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito.
+**Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito. Hasta el Paso 7 el pedido solo distingue `OPEN` y `CANCELLED`, y las líneas `PENDING` y `CANCELLED`.
 
 **Cálculos** (no se guardan en BD, se calculan):
 
@@ -151,13 +151,10 @@ Commits:
 
 ### Paso 3 — Pedidos de cliente · rama `feature/sales-orders`
 
-1. `feat: add sales order and line entities with migration`
-2. `feat: add order number generation`
-3. `feat: create order with lines copying catalog prices` — incluye las personalizaciones de cada línea.
-4. `feat: allow manual price override on lines and customizations`
-5. `feat: compute line and order totals and profit`
-6. `feat: edit and cancel orders` — solo si sus líneas siguen `PENDING`.
-7. `test: cover totals, profit and order rules`
+1. `feat: expose catalog and customer lookups to other modules` — APIs públicas `CatalogApi` y `CustomerApi`: `sales` no toca clases internas de otros módulos.
+2. `feat: add sales order and line entities with migration` — `SalesOrder` → `SalesOrderLine` → `LineCustomization`, migración `V4`, número `SO-<año>-<secuencia>` con una secuencia de BD, totales calculados.
+3. `feat: create orders copying catalog prices with manual overrides` — `POST/GET /api/sales/orders`. Los precios se copian del catálogo; si llegan en la petición (incluido 0) se usan esos.
+4. `feat: list, edit and cancel orders and lines` — listado (`?customerId=`), editar cabecera, añadir/sustituir/cancelar líneas y cancelar el pedido. Solo pedidos abiertos y líneas `PENDING`; no se puede cancelar la última línea (se cancela el pedido). Un producto o personalización desactivados no se pueden añadir, pero una línea que ya los tenía se puede seguir editando (por ejemplo, para cambiar la talla).
 
 ### Paso 4 — Cobros · rama `feature/payments`
 
