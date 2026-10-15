@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.FailingController.class)
@@ -79,14 +81,53 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{esto no es json"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Petición no válida"))
+                .andExpect(jsonPath("$.detail").value("El cuerpo de la petición no tiene un formato válido."));
     }
 
     @Test
-    void givenUnknownUrl_whenRequested_thenReturnsNotFoundProblem() throws Exception {
+    void givenWrongValueType_whenPosted_thenReturnsBadRequestProblemInSpanish() throws Exception {
+        mockMvc.perform(post("/test-errors/validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Camiseta\",\"price\":\"abc\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Petición no válida"));
+    }
+
+    @Test
+    void givenUnknownUrl_whenRequested_thenReturnsNotFoundProblemInSpanish() throws Exception {
         mockMvc.perform(get("/test-errors/does-not-exist"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Recurso no encontrado"))
+                .andExpect(jsonPath("$.detail").value("La ruta solicitada no existe."));
+    }
+
+    @Test
+    void givenUnsupportedMethod_whenRequested_thenReturnsMethodNotAllowedProblemInSpanish() throws Exception {
+        mockMvc.perform(post("/test-errors/not-found"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.title").value("Método no permitido"));
+    }
+
+    @Test
+    void givenMissingRequestParameter_whenRequested_thenReturnsBadRequestProblemInSpanish() throws Exception {
+        mockMvc.perform(get("/test-errors/param-validation"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Petición no válida"))
+                .andExpect(jsonPath("$.detail").value("Falta el parámetro obligatorio page."));
+    }
+
+    @Test
+    void givenInvalidRequestParameter_whenRequested_thenReturnsBadRequestWithFieldError() throws Exception {
+        mockMvc.perform(get("/test-errors/param-validation").param("page", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Datos no válidos"))
+                .andExpect(jsonPath("$.errors.length()").value(1))
+                .andExpect(jsonPath("$.errors[0].field").value("page"))
+                .andExpect(jsonPath("$.errors[0].message").value("La página debe ser al menos 1"));
     }
 
     @RestController
@@ -110,6 +151,10 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/validation")
         void validation(@Valid @RequestBody TestRequest request) {
+        }
+
+        @GetMapping("/param-validation")
+        void paramValidation(@RequestParam @Min(value = 1, message = "La página debe ser al menos 1") int page) {
         }
     }
 
