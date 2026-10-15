@@ -1,8 +1,19 @@
 package com.pedropalazon.sales_manager_backend.sales.internal;
 
+import com.pedropalazon.sales_manager_backend.customers.CustomerApi;
+import com.pedropalazon.sales_manager_backend.customers.CustomerSummary;
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
+import com.pedropalazon.sales_manager_backend.sales.OrderLineSnapshot;
 import com.pedropalazon.sales_manager_backend.sales.SalesOrderApi;
 import com.pedropalazon.sales_manager_backend.sales.SalesOrderSnapshot;
+import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,10 +23,15 @@ class SalesOrderApiService implements SalesOrderApi {
 
     private final SalesOrderService salesOrderService;
     private final SalesOrderRepository salesOrderRepository;
+    private final SalesOrderLineRepository lineRepository;
+    private final CustomerApi customerApi;
 
-    SalesOrderApiService(SalesOrderService salesOrderService, SalesOrderRepository salesOrderRepository) {
+    SalesOrderApiService(SalesOrderService salesOrderService, SalesOrderRepository salesOrderRepository,
+            SalesOrderLineRepository lineRepository, CustomerApi customerApi) {
         this.salesOrderService = salesOrderService;
         this.salesOrderRepository = salesOrderRepository;
+        this.lineRepository = lineRepository;
+        this.customerApi = customerApi;
     }
 
     @Override
@@ -32,6 +48,63 @@ class SalesOrderApiService implements SalesOrderApi {
         SalesOrder order = salesOrderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el pedido con id %d".formatted(orderId)));
         return snapshotOf(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderLineSnapshot> findPendingLines() {
+        return snapshotsOf(lineRepository.findByStatusInOrdersWithStatus(LineStatus.PENDING, SalesOrderStatus.OPEN));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderLineSnapshot> getLines(Collection<Long> lineIds) {
+        return snapshotsOf(findAllOrFail(lineIds));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void markLinesOrdered(Collection<Long> lineIds) {
+        List<SalesOrderLine> lines = findAllOrFail(lineIds);
+        // Se comprueban todas antes de cambiar ninguna: o se marcan todas o ninguna
+        lines.stream()
+                .filter(line -> !line.isPending() || line.getOrder().isCancelled())
+                .findFirst()
+                .ifPresent(line -> {
+                    throw new BusinessRuleException(
+                            "La línea %d no está pendiente de pedir".formatted(line.getId()));
+                });
+        lines.forEach(SalesOrderLine::markOrdered);
+    }
+
+    private List<SalesOrderLine> findAllOrFail(Collection<Long> lineIds) {
+        List<SalesOrderLine> lines = lineRepository.findAllWithOrderByIdIn(lineIds);
+        Set<Long> missing = new HashSet<>(lineIds);
+        lines.forEach(line -> missing.remove(line.getId()));
+        if (!missing.isEmpty()) {
+            String ids = missing.stream().sorted().map(String::valueOf).collect(Collectors.joining(", "));
+            throw new ResourceNotFoundException("No existen las líneas " + ids);
+        }
+        return lines;
+    }
+
+    private List<OrderLineSnapshot> snapshotsOf(List<SalesOrderLine> lines) {
+        Map<Long, CustomerSummary> customers = customerApi.findCustomers(
+                lines.stream().map(line -> line.getOrder().getCustomerId()).collect(Collectors.toSet()));
+        return lines.stream().map(line -> snapshotOf(line, customers)).toList();
+    }
+
+    private static OrderLineSnapshot snapshotOf(SalesOrderLine line, Map<Long, CustomerSummary> customers) {
+        SalesOrder order = line.getOrder();
+        CustomerSummary customer = customers.get(order.getCustomerId());
+        List<OrderLineSnapshot.Customization> customizations = line.getCustomizations().stream()
+                .map(customization -> new OrderLineSnapshot.Customization(customization.getCustomizationName(),
+                        customization.getCustomText()))
+                .toList();
+        return new OrderLineSnapshot(line.getId(), order.getId(), order.getOrderNumber(), order.getOrderDate(),
+                order.getCustomerId(), customer == null ? null : customer.name(), line.getProductId(),
+                line.getProductName(), line.getKitName(), line.getSize(), line.getStatus(), customizations,
+                line.totalSale(), line.totalCost());
     }
 
     private static SalesOrderSnapshot snapshotOf(SalesOrder order) {

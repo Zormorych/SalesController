@@ -2,6 +2,7 @@ package com.pedropalazon.sales_manager_backend.sales.internal;
 
 import com.pedropalazon.sales_manager_backend.catalog.ClothingSize;
 import com.pedropalazon.sales_manager_backend.customers.CustomerSummary;
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
