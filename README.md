@@ -53,7 +53,7 @@ Los tests usan H2 en memoria (perfil `test`) y no necesitan Docker.
 
 ## Integración continua
 
-En cada push a cualquier rama, y en cada PR a `main`, GitHub Actions ejecuta el pipeline con JDK 21, por etapas:
+En cada push a cualquier rama GitHub Actions ejecuta el pipeline con JDK 21 (sus checks aparecen también en el PR de esa rama). También se puede lanzar a mano con **Run workflow** en la pestaña Actions. Va por etapas:
 
 ```text
 Compilar ──┬── Tests ────────────────┬── Empaquetar (.jar)
