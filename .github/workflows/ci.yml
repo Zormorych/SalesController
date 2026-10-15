@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 # Cada job es una "stage" (como en GitLab). "needs" fija el orden:
-#   compile ──┬── test ─────────┬── package
-#             └── architecture ─┘
+#   compile ──┬── test ─────────┬── package (.jar)
+#             └── architecture ─┴── docker  (imagen)
 # Cada job arranca en una máquina limpia; la caché de Maven evita descargar las dependencias cada vez.
 jobs:
   compile:
@@ -95,3 +95,21 @@ jobs:
           name: sales-manager-backend-jar
           path: target/*.jar
           retention-days: 7
+
+  docker:
+    name: Imagen Docker
+    needs: [test, architecture]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # Solo comprueba que el Dockerfile construye la imagen; no la publica en ningún registro
+      - name: Construir la imagen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: sales-manager-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
