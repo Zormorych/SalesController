@@ -8,6 +8,7 @@ import com.pedropalazon.sales_manager_backend.sales.SalesOrderApi;
 import com.pedropalazon.sales_manager_backend.sales.SalesOrderSnapshot;
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
+import jakarta.persistence.EntityManager;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -25,9 +26,11 @@ class SalesOrderApiService implements SalesOrderApi {
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderLineRepository lineRepository;
     private final CustomerApi customerApi;
+    private final EntityManager entityManager;
 
     SalesOrderApiService(SalesOrderService salesOrderService, SalesOrderRepository salesOrderRepository,
-            SalesOrderLineRepository lineRepository, CustomerApi customerApi) {
+            SalesOrderLineRepository lineRepository, CustomerApi customerApi, EntityManager entityManager) {
+        this.entityManager = entityManager;
         this.salesOrderService = salesOrderService;
         this.salesOrderRepository = salesOrderRepository;
         this.lineRepository = lineRepository;
@@ -66,6 +69,11 @@ class SalesOrderApiService implements SalesOrderApi {
     @Transactional(propagation = Propagation.MANDATORY)
     public void markLinesOrdered(Collection<Long> lineIds) {
         List<SalesOrderLine> lines = findAllOrFail(lineIds);
+        // Bloquea sus pedidos y después recarga su estado (y en cascada el de sus líneas): quien llama puede
+        // tener ya estas líneas en memoria, leídas antes de que otra transacción las cancelara
+        List<SalesOrder> orders = lines.stream().map(SalesOrderLine::getOrder).distinct().toList();
+        salesOrderRepository.lockByIds(orders.stream().map(SalesOrder::getId).toList());
+        orders.forEach(entityManager::refresh);
         // Se comprueban todas antes de cambiar ninguna: o se marcan todas o ninguna
         lines.stream()
                 .filter(line -> !line.isPending() || line.getOrder().isCancelled())

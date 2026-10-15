@@ -110,8 +110,11 @@ public class SalesOrderService {
         return detailsOf(order);
     }
 
+    // Toda modificación bloquea el pedido hasta el commit: así no se pisa con un cobro o con el envío
+    // de un lote al fabricante que toquen el mismo pedido a la vez
     private SalesOrder findOpen(Long id) {
-        SalesOrder order = find(id);
+        SalesOrder order = repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el pedido con id %d".formatted(id)));
         if (order.isCancelled()) {
             throw new BusinessRuleException("El pedido %s está cancelado y no se puede modificar"
                     .formatted(order.getOrderNumber()));

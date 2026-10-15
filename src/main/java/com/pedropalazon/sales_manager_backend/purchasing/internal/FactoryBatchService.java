@@ -112,8 +112,10 @@ public class FactoryBatchService {
         return detailsOf(batch);
     }
 
+    // Bloquea el lote hasta el commit: así nadie añade camisetas a un lote que se está enviando
     private FactoryBatch findOpen(Long id) {
-        FactoryBatch batch = find(id);
+        FactoryBatch batch = repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el lote con id %d".formatted(id)));
         if (batch.getStatus() == FactoryBatchStatus.SENT) {
             throw new BusinessRuleException(
                     "El lote %s ya se ha enviado y no se puede modificar".formatted(batch.getBatchNumber()));

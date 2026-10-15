@@ -1,6 +1,7 @@
 package com.pedropalazon.sales_manager_backend.sales.internal;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,10 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from SalesOrder o where o.id = :id")
     Optional<SalesOrder> findByIdForUpdate(@Param("id") Long id);
+
+    // Bloquea varios pedidos sin cargarlos (en orden de id, para que dos transacciones no se crucen)
+    @Query(value = "select id from sales_orders where id in (:ids) order by id for update", nativeQuery = true)
+    List<Long> lockByIds(@Param("ids") Collection<Long> ids);
 
     List<SalesOrder> findAllByOrderByOrderDateDescIdDesc();
 
