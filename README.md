@@ -30,6 +30,14 @@ Arquitectura, modelo de dominio y pasos de desarrollo: [docs/ROADMAP.md](docs/RO
 
    Desde IntelliJ basta con ejecutar `SalesManagerBackendApplication`.
 
+   Si el puerto 8080 está ocupado por otra aplicación, se puede cambiar con la variable `SERVER_PORT`:
+
+   ```powershell
+   $env:SERVER_PORT = '8081'; .\mvnw.cmd spring-boot:run
+   ```
+
+   En IntelliJ: *Run → Edit Configurations → Environment variables* → `SERVER_PORT=8081`.
+
 3. Comprobar que responde:
 
    - Health: <http://localhost:8080/api/health>
