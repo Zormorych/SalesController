@@ -28,9 +28,10 @@ public class PaymentService {
         return summaryOf(salesOrderApi.getOrder(orderId));
     }
 
+    // El pedido queda bloqueado hasta el commit: dos cobros simultáneos no pueden ver los dos el mismo pendiente
     @Transactional
     public PaymentSummary register(Long orderId, BigDecimal amount, LocalDate paymentDate, String notes) {
-        SalesOrderSnapshot order = salesOrderApi.getOrder(orderId);
+        SalesOrderSnapshot order = salesOrderApi.lockOrder(orderId);
         if (order.cancelled()) {
             throw new BusinessRuleException(
                     "El pedido %s está cancelado y no admite cobros".formatted(order.orderNumber()));
@@ -50,7 +51,7 @@ public class PaymentService {
     // Se puede anular aunque el pedido esté cancelado: es justo el caso de devolver un cobro
     @Transactional
     public PaymentSummary voidPayment(Long orderId, Long paymentId) {
-        SalesOrderSnapshot order = salesOrderApi.getOrder(orderId);
+        SalesOrderSnapshot order = salesOrderApi.lockOrder(orderId);
         Payment payment = repository.findById(paymentId)
                 .filter(found -> found.getSalesOrderId().equals(orderId))
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el pago %d en el pedido %s"
