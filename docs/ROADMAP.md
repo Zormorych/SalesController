@@ -74,7 +74,7 @@ catalog
                     Size para no chocar con la anotación de validación @Size)
 
 customers
-  Customer          id, name, phone, notes
+  Customer          id, name, phone (normalizado y único, opcional), notes
 
 sales
   SalesOrder        id, orderNumber (SO-2026-000001), customer, orderDate, status, notes
@@ -146,9 +146,8 @@ Commits:
 
 ### Paso 2 — Clientes · rama `feature/customers`
 
-1. `feat: add customer entity and migration`
-2. `feat: add customer REST endpoints` — CRUD y búsqueda por nombre o teléfono.
-3. `test: cover customer endpoints`
+1. `feat: add customer entity and migration` — `Customer` (nombre, teléfono, notas), migración `V3`, repositorio con búsqueda.
+2. `feat: add customer REST endpoints` — `/api/customers`: listar (con `?search=` por nombre o por dígitos del teléfono), ver, crear y editar. Teléfono guardado sin separadores y único: "+34 600-123-456" y "+34600123456" son el mismo. No se borran clientes.
 
 ### Paso 3 — Pedidos de cliente · rama `feature/sales-orders`
 
