@@ -70,6 +70,15 @@ class CustomerApiTest {
     }
 
     @Test
+    void givenPhoneWithOnlySeparators_whenCreated_thenReturnsBadRequestOnPhone() throws Exception {
+        mockMvc.perform(post(CUSTOMERS).contentType(MediaType.APPLICATION_JSON).content(json("Ana Pérez", "------", null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("phone"));
+        mockMvc.perform(post(CUSTOMERS).contentType(MediaType.APPLICATION_JSON).content(json("Ana Pérez", "+(((((", null)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void givenMissingName_whenCreated_thenReturnsBadRequestOnName() throws Exception {
         mockMvc.perform(post(CUSTOMERS).contentType(MediaType.APPLICATION_JSON).content(json(" ", "600111222", null)))
                 .andExpect(status().isBadRequest())

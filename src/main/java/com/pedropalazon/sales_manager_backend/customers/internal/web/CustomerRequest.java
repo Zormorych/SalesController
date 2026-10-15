@@ -9,8 +9,9 @@ public record CustomerRequest(
         @Size(max = 120, message = "El nombre no puede superar 120 caracteres")
         String name,
 
-        // Vacío = sin teléfono (el frontend puede mandar "" en vez de null)
-        @Pattern(regexp = "^$|^\\+?[0-9 .()-]{6,25}$",
+        // Vacío = sin teléfono (el frontend puede mandar "" en vez de null).
+        // El lookahead (?=...) exige al menos 6 dígitos: "------" no es un teléfono aunque tenga 6 caracteres.
+        @Pattern(regexp = "^$|^\\+?(?=(?:\\D*\\d){6})[0-9 .()-]{6,25}$",
                 message = "El teléfono solo puede tener dígitos, espacios, guiones, puntos, paréntesis y un + inicial")
         String phone,
 

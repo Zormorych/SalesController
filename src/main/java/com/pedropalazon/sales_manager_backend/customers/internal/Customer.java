@@ -49,10 +49,11 @@ public class Customer {
     // El teléfono se guarda sin separadores para poder buscarlo y detectar duplicados
     // aunque se escriba con otro formato ("+34 600-123-456" y "+34600123456" son el mismo)
     public static String normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) {
+        if (phone == null) {
             return null;
         }
-        return phone.replaceAll("[\\s.()-]", "");
+        String digitsAndPlus = phone.replaceAll("[\\s.()-]", "");
+        return digitsAndPlus.isEmpty() ? null : digitsAndPlus;
     }
 
     public Long getId() {
