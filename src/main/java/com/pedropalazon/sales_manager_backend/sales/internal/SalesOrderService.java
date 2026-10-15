@@ -4,6 +4,7 @@ import com.pedropalazon.sales_manager_backend.catalog.CatalogApi;
 import com.pedropalazon.sales_manager_backend.catalog.CatalogItemSnapshot;
 import com.pedropalazon.sales_manager_backend.customers.CustomerApi;
 import com.pedropalazon.sales_manager_backend.customers.CustomerSummary;
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import java.math.BigDecimal;
@@ -98,6 +99,13 @@ public class SalesOrderService {
     @Transactional
     public SalesOrderView.Details cancel(Long id) {
         SalesOrder order = findOpen(id);
+        // Una camiseta ya pedida al fabricante se fabrica y se paga igual: cancelarla falsearía el coste
+        // y el envío de su lote. Qué hacer con ella (stock, pérdida...) se decidirá con la recepción (Paso 7).
+        boolean hasOrderedLines = order.getLines().stream().anyMatch(line -> line.getStatus() == LineStatus.ORDERED);
+        if (hasOrderedLines) {
+            throw new BusinessRuleException("El pedido %s tiene camisetas ya pedidas al fabricante y no se puede cancelar"
+                    .formatted(order.getOrderNumber()));
+        }
         order.cancel();
         return detailsOf(order);
     }

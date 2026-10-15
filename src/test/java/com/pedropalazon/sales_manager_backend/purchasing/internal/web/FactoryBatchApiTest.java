@@ -166,6 +166,20 @@ class FactoryBatchApiTest {
         }
 
         @Test
+        void givenOrderWhoseShirtsWereSentToTheFactory_whenCancellingTheOrder_thenReturnsConflict() throws Exception {
+            String order = createOrder(2);
+            long batchId = idOf(createBatch(lineIdsOf(order), "4.00").andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send")).andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/sales/orders/" + idOf(order) + "/cancel"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("ya pedidas al fabricante")));
+            mockMvc.perform(get(BATCHES + "/" + batchId))
+                    .andExpect(jsonPath("$.totals.activeLines").value(2))
+                    .andExpect(jsonPath("$.totals.shipping").value(4.0));
+        }
+
+        @Test
         void givenSentBatch_whenChangingLinesOrCancelling_thenReturnsConflict() throws Exception {
             List<Long> lines = createOrderWithLines(2);
             long batchId = idOf(createBatch(lines.subList(0, 1), "4.00").andReturn().getResponse().getContentAsString());
