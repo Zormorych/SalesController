@@ -130,6 +130,17 @@ class SalesOrderApiTest {
     }
 
     @Test
+    void givenNullLineOrCustomization_whenOrderCreated_thenReturnsBadRequestInsteadOfServerError() throws Exception {
+        createOrder("{\"customerId\":" + anaId + ",\"lines\":[null]}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value(startsWith("lines[0]")))
+                .andExpect(jsonPath("$.errors[0].message").value("La línea no puede estar vacía"));
+        createOrder(orderJson(anaId, null, lineJson(fanShirtId, "M", null, "null")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].message").value("La personalización no puede estar vacía"));
+    }
+
+    @Test
     void givenUnknownSize_whenOrderCreated_thenReturnsBadRequestInSpanish() throws Exception {
         createOrder(orderJson(anaId, null, lineJson(fanShirtId, "XXXL", null)))
                 .andExpect(status().isBadRequest())

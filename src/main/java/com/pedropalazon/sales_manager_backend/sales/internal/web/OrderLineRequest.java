@@ -31,7 +31,7 @@ public record OrderLineRequest(
         @Digits(integer = 8, fraction = 2, message = "El coste admite como máximo 8 enteros y 2 decimales")
         BigDecimal unitPurchaseCost,
 
-        List<@Valid LineCustomizationRequest> customizations) {
+        List<@NotNull(message = "La personalización no puede estar vacía") @Valid LineCustomizationRequest> customizations) {
 
     OrderLineDraft toDraft() {
         List<OrderLineDraft.Customization> drafts = customizations == null
