@@ -55,6 +55,18 @@ class ProductApiTest {
     }
 
     @Test
+    void givenDeactivatedProduct_whenCreatingWithSameName_thenConflictExplainsItCanBeReactivated() throws Exception {
+        long id = create("Chándal", "50.00", "34.00");
+        mockMvc.perform(post(PRODUCTS + "/" + id + "/deactivate")).andExpect(status().isOk());
+
+        mockMvc.perform(post(PRODUCTS).contentType(MediaType.APPLICATION_JSON)
+                        .content(json("chándal", "52.00", "35.00")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail")
+                        .value("Ya existe un producto llamado 'chándal' (está desactivado: puedes reactivarlo)"));
+    }
+
+    @Test
     void givenPriceWithThreeDecimals_whenCreated_thenReturnsBadRequestWithFieldError() throws Exception {
         mockMvc.perform(post(PRODUCTS).contentType(MediaType.APPLICATION_JSON)
                         .content(json("Camiseta Fan", "15.999", "6.50")))

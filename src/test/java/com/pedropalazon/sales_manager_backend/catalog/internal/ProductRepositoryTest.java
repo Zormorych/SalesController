@@ -55,11 +55,10 @@ class ProductRepositoryTest {
     }
 
     @Test
-    void givenExistingProduct_whenCheckingNameIgnoringCase_thenOnlyOtherProductsCount() {
+    void givenExistingProduct_whenFindingByNameIgnoringCase_thenFindsItOnlyByThatName() {
         Product product = repository.save(new Product("Camiseta Fan", new BigDecimal("15.00"), new BigDecimal("6.50")));
 
-        assertThat(repository.existsByNameIgnoreCase("CAMISETA FAN")).isTrue();
-        assertThat(repository.existsByNameIgnoreCaseAndIdNot("camiseta fan", product.getId())).isFalse();
-        assertThat(repository.existsByNameIgnoreCase("Camiseta Player")).isFalse();
+        assertThat(repository.findFirstByNameIgnoreCase("CAMISETA FAN")).map(Product::getId).contains(product.getId());
+        assertThat(repository.findFirstByNameIgnoreCase("Camiseta Player")).isEmpty();
     }
 }

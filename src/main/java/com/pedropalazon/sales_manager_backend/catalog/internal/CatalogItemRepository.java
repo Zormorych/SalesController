@@ -1,6 +1,7 @@
 package com.pedropalazon.sales_manager_backend.catalog.internal;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 
@@ -11,7 +12,5 @@ public interface CatalogItemRepository<T extends CatalogItem> extends JpaReposit
 
     List<T> findAllByActiveTrueOrderByNameAsc();
 
-    boolean existsByNameIgnoreCase(String name);
-
-    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+    Optional<T> findFirstByNameIgnoreCase(String name);
 }

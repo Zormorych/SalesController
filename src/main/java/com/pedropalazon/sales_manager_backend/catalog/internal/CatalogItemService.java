@@ -65,11 +65,14 @@ public abstract class CatalogItemService<T extends CatalogItem> {
 
     private void ensureNameIsFree(String name, Long currentId) {
         String trimmedName = name.trim();
-        boolean taken = currentId == null
-                ? repository.existsByNameIgnoreCase(trimmedName)
-                : repository.existsByNameIgnoreCaseAndIdNot(trimmedName, currentId);
-        if (taken) {
-            throw new BusinessRuleException(duplicateNameMessage.formatted(trimmedName));
-        }
+        repository.findFirstByNameIgnoreCase(trimmedName)
+                .filter(existing -> !existing.getId().equals(currentId))
+                .ifPresent(existing -> {
+                    String message = duplicateNameMessage.formatted(trimmedName);
+                    // Un artículo desactivado no sale en el listado por defecto: hay que decir por qué choca
+                    throw new BusinessRuleException(existing.isActive()
+                            ? message
+                            : message + " (está desactivado: puedes reactivarlo)");
+                });
     }
 }
