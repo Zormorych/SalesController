@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,7 +78,7 @@ public class SalesOrderService {
     public SalesOrderView.Details updateLine(Long id, Long lineId, OrderLineDraft draft) {
         SalesOrder order = findOpen(id);
         SalesOrderLine line = findPendingLine(order, lineId);
-        line.replaceWith(buildLine(draft));
+        line.replaceWith(buildLine(draft, line));
         repository.flush();
         return detailsOf(order);
     }
@@ -141,14 +142,30 @@ public class SalesOrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el pedido con id %d".formatted(id)));
     }
 
-    // Copia nombre y precios del catálogo; un precio que llega en la petición (incluido 0) tiene prioridad
     SalesOrderLine buildLine(OrderLineDraft draft) {
-        CatalogItemSnapshot product = catalogApi.getActiveProduct(draft.productId());
+        return buildLine(draft, null);
+    }
+
+    // Copia nombre y precios del catálogo; un precio que llega en la petición (incluido 0) tiene prioridad.
+    // Al editar una línea, el producto y las personalizaciones que ya tenía se aceptan aunque se hayan
+    // desactivado después: si no, no se podría ni cambiar la talla de esa camiseta.
+    SalesOrderLine buildLine(OrderLineDraft draft, SalesOrderLine current) {
+        boolean keepsProduct = current != null && current.getProductId().equals(draft.productId());
+        CatalogItemSnapshot product = keepsProduct
+                ? catalogApi.getProduct(draft.productId())
+                : catalogApi.getActiveProduct(draft.productId());
+        Set<Long> currentCustomizationIds = current == null
+                ? Set.of()
+                : current.getCustomizations().stream()
+                        .map(LineCustomization::getCustomizationId)
+                        .collect(Collectors.toSet());
         SalesOrderLine line = new SalesOrderLine(product.id(), product.name(), draft.kitName(), draft.size(),
                 priceOrDefault(draft.unitSalePrice(), product.salePrice()),
                 priceOrDefault(draft.unitPurchaseCost(), product.purchaseCost()));
         for (OrderLineDraft.Customization requested : draft.customizations()) {
-            CatalogItemSnapshot customization = catalogApi.getActiveCustomization(requested.customizationId());
+            CatalogItemSnapshot customization = currentCustomizationIds.contains(requested.customizationId())
+                    ? catalogApi.getCustomization(requested.customizationId())
+                    : catalogApi.getActiveCustomization(requested.customizationId());
             line.addCustomization(new LineCustomization(customization.id(), customization.name(),
                     requested.customText(),
                     priceOrDefault(requested.salePrice(), customization.salePrice()),

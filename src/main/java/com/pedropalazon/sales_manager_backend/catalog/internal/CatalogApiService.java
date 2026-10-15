@@ -38,6 +38,18 @@ class CatalogApiService implements CatalogApi {
         return snapshotOf(customization);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CatalogItemSnapshot getProduct(Long productId) {
+        return snapshotOf(productService.get(productId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CatalogItemSnapshot getCustomization(Long customizationId) {
+        return snapshotOf(customizationService.get(customizationId));
+    }
+
     private static CatalogItemSnapshot snapshotOf(CatalogItem item) {
         return new CatalogItemSnapshot(item.getId(), item.getName(), item.getSalePrice(), item.getPurchaseCost());
     }

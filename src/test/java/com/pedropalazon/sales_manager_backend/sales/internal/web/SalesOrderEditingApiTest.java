@@ -116,6 +116,32 @@ class SalesOrderEditingApiTest {
     }
 
     @Test
+    void givenProductDeactivatedAfterOrdering_whenEditingLineKeepingIt_thenIsAllowed() throws Exception {
+        String body = createOrder(orderJson(anaId, null, lineJson(fanShirtId, "M", null,
+                customizationJson(nameAndNumberId, "PEDRO 10", null))));
+        mockMvc.perform(post("/api/catalog/products/" + fanShirtId + "/deactivate")).andExpect(status().isOk());
+        mockMvc.perform(post("/api/catalog/customizations/" + nameAndNumberId + "/deactivate")).andExpect(status().isOk());
+
+        mockMvc.perform(put(ORDERS + "/" + idOf(body) + "/lines/" + lineIdOf(body, 0)).contentType(MediaType.APPLICATION_JSON)
+                        .content(lineJson(fanShirtId, "L", null, customizationJson(nameAndNumberId, "PEDRO 11", null))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lines[0].productName").value("Camiseta Fan"))
+                .andExpect(jsonPath("$.lines[0].size").value("L"))
+                .andExpect(jsonPath("$.lines[0].customizations[0].customText").value("PEDRO 11"));
+    }
+
+    @Test
+    void givenDeactivatedProduct_whenSwitchingALineToIt_thenReturnsConflict() throws Exception {
+        String body = createOrder(orderJson(anaId, null, lineJson(fanShirtId, "M", null)));
+        mockMvc.perform(post("/api/catalog/products/" + playerShirtId + "/deactivate")).andExpect(status().isOk());
+
+        mockMvc.perform(put(ORDERS + "/" + idOf(body) + "/lines/" + lineIdOf(body, 0)).contentType(MediaType.APPLICATION_JSON)
+                        .content(lineJson(playerShirtId, "L", null)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("El producto 'Camiseta Player' está desactivado"));
+    }
+
+    @Test
     void givenTwoLines_whenOneCancelled_thenItStaysVisibleButIsExcludedFromTotals() throws Exception {
         String body = createOrder(orderJson(anaId, null, lineJson(fanShirtId, "M", null),
                 lineJson(playerShirtId, "L", null)));
