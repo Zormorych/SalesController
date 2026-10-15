@@ -85,7 +85,7 @@ sales
   (* = snapshot copiado del catálogo y editable: descuento, amigo → 0 €)
 
 payments
-  Payment           id, salesOrderId, amount, paymentDate, notes
+  Payment           id, salesOrderId, amount, paymentDate, status (REGISTERED, VOIDED), notes
 
 purchasing
   FactoryBatch      id, batchNumber, createdAt, status (OPEN, SENT, RECEIVED), shippingCost, notes
@@ -158,10 +158,12 @@ Commits:
 
 ### Paso 4 — Cobros · rama `feature/payments`
 
-1. `feat: add payment entity and migration`
-2. `feat: register and list payments for an order`
-3. `feat: expose paid and pending amounts in order detail`
-4. `test: cover partial payments and overpayment rule`
+1. `feat: expose sales order totals to other modules` — API pública `SalesOrderApi`: cobros consulta número, estado y total del pedido sin tocar el interior de ventas.
+2. `feat: add payment entity and migration` — `Payment`, migración `V5`, `shared.MoneyFormat` para importes en mensajes ("17,00 €").
+3. `feat: register payments and show paid and pending amounts` — `GET/POST /api/sales/orders/{id}/payments`: cobrado y pendiente. Importe > 0; no se cobra más de lo pendiente ni en pedidos cancelados. Si se cancela un pedido ya cobrado, el pendiente sale negativo (a devolver).
+4. `feat: void payments registered by mistake` — `POST …/payments/{paymentId}/void`: el pago queda anulado (`VOIDED`) y deja de sumar.
+
+Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `sales` no puede depender de `payments` (sería un ciclo entre módulos).
 
 ### Paso 5 — Lotes al fabricante · rama `feature/factory-batches`
 

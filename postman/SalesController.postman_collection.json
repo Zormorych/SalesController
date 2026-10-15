@@ -13,6 +13,9 @@
     { "key": "orderId", "value": "" },
     { "key": "firstLineId", "value": "" },
     { "key": "addedLineId", "value": "" },
+    { "key": "paymentOrderId", "value": "" },
+    { "key": "paymentOrderTotal", "value": "" },
+    { "key": "paymentId", "value": "" },
     { "key": "runSuffix", "value": "" }
   ],
   "item": [
@@ -771,6 +774,190 @@
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Ventas - Cobros",
+      "item": [
+        {
+          "name": "Crear pedido para cobrar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 y guarda el pedido y su total', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const order = pm.response.json();",
+                  "    pm.collectionVariables.set('paymentOrderId', order.id);",
+                  "    pm.collectionVariables.set('paymentOrderTotal', order.totals.sale);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"M\",\n      \"customizations\": [\n        { \"customizationId\": {{customizationId}}, \"customText\": \"WILLIAMS JR 17\" }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders"
+          }
+        },
+        {
+          "name": "Cobrar señal de 10 €",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201, cobrado 10 y el resto pendiente', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const summary = pm.response.json();",
+                  "    pm.expect(summary.paidAmount).to.eql(10);",
+                  "    pm.expect(summary.pendingAmount).to.eql(Number(pm.collectionVariables.get('paymentOrderTotal')) - 10);",
+                  "    pm.collectionVariables.set('paymentId', summary.payments[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10.00,\n  \"notes\": \"Señal por Bizum\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
+          }
+        },
+        {
+          "name": "Error - cobro mayor que lo pendiente (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 con lo pendiente en el mensaje', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('supera lo pendiente');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
+          }
+        },
+        {
+          "name": "Anular la señal (apuntada por error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200, pago VOIDED y cobrado 0', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const summary = pm.response.json();",
+                  "    pm.expect(summary.payments[0].status).to.eql('VOIDED');",
+                  "    pm.expect(summary.paidAmount).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments/{{paymentId}}/void"
+          }
+        },
+        {
+          "name": "Cobrar el total",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 y nada pendiente', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(pm.response.json().pendingAmount).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": {{paymentOrderTotal}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
+          }
+        },
+        {
+          "name": "Error - pedido ya pagado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 ya está pagado', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('ya está pagado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 0.01\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
+          }
+        },
+        {
+          "name": "Ver cobros del pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con los dos pagos (uno anulado)', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const summary = pm.response.json();",
+                  "    pm.expect(summary.payments).to.have.lengthOf(2);",
+                  "    pm.expect(summary.pendingAmount).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
           }
         }
       ]
