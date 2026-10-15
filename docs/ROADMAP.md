@@ -88,12 +88,12 @@ payments
   Payment           id, salesOrderId, amount, paymentDate, status (REGISTERED, VOIDED), notes
 
 purchasing
-  FactoryBatch      id, batchNumber, createdAt, status (OPEN, SENT, RECEIVED), shippingCost, notes
+  FactoryBatch      id, batchNumber, createdAt, sentAt, status (OPEN, SENT, CANCELLED; RECEIVED en el Paso 7), shippingCost, notes
   (cada SalesOrderLine pertenece como mucho a un lote)
   (shippingCost es editable; el valor por defecto, normalmente 4,00 €, lo propone el frontend, no el backend)
 ```
 
-**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Desde cualquiera de los anteriores a `DELIVERED` se puede pasar a `CANCELLED`.
+**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado, desde el Paso 5) → `RECEIVED` → `DELIVERED`. Desde cualquiera de los anteriores a `DELIVERED` se puede pasar a `CANCELLED`.
 
 **Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito. Hasta el Paso 7 el pedido solo distingue `OPEN` y `CANCELLED`, y las líneas `PENDING` y `CANCELLED`.
 
@@ -167,11 +167,10 @@ Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `s
 
 ### Paso 5 — Lotes al fabricante · rama `feature/factory-batches`
 
-1. `feat: list pending order lines`
-2. `feat: create factory batch from selected lines` — una línea no puede estar en dos lotes.
-3. `feat: add editable shipping cost to batch`
-4. `feat: mark batch as sent and lines as ordered`
-5. `test: cover batch creation rules and shipping allocation`
+1. `feat: expose order lines to other modules and allow marking them as ordered` — `SalesOrderApi` gana líneas pendientes, consulta de líneas y "marcar como pedidas" (`ORDERED`); `LineStatus` pasa a ser API pública.
+2. `feat: add factory batch entity and migration` — `FactoryBatch` (número `FB-<año>-<secuencia>`), migración `V6` con `UNIQUE` por camiseta, reparto del envío por céntimos (4,00 € entre 3 → 1,34 + 1,33 + 1,33).
+3. `feat: create factory batches from pending lines with shipping cost` — `/api/purchasing/pending-lines` y `/api/purchasing/batches`: crear, listar, ver (venta, coste, envío repartido y beneficio por camiseta y del lote) y corregir el envío.
+4. `feat: add, remove, send and cancel factory batch lines` — añadir/quitar camisetas mientras está abierto, enviar (las camisetas pasan a `ORDERED` y ya no se editan) y descartar (libera sus camisetas).
 
 ### Paso 6 — Excel del fabricante · rama `feature/factory-excel`
 

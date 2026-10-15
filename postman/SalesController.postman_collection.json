@@ -5,18 +5,74 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "productId", "value": "" },
-    { "key": "productName", "value": "" },
-    { "key": "customizationId", "value": "" },
-    { "key": "customerId", "value": "" },
-    { "key": "customerPhone", "value": "" },
-    { "key": "orderId", "value": "" },
-    { "key": "firstLineId", "value": "" },
-    { "key": "addedLineId", "value": "" },
-    { "key": "paymentOrderId", "value": "" },
-    { "key": "paymentOrderTotal", "value": "" },
-    { "key": "paymentId", "value": "" },
-    { "key": "runSuffix", "value": "" }
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "productName",
+      "value": ""
+    },
+    {
+      "key": "customizationId",
+      "value": ""
+    },
+    {
+      "key": "customerId",
+      "value": ""
+    },
+    {
+      "key": "customerPhone",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "firstLineId",
+      "value": ""
+    },
+    {
+      "key": "addedLineId",
+      "value": ""
+    },
+    {
+      "key": "paymentOrderId",
+      "value": ""
+    },
+    {
+      "key": "paymentOrderTotal",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "runSuffix",
+      "value": ""
+    },
+    {
+      "key": "batchLineIds",
+      "value": ""
+    },
+    {
+      "key": "batchFirstLineId",
+      "value": ""
+    },
+    {
+      "key": "batchId",
+      "value": ""
+    },
+    {
+      "key": "discardLineIds",
+      "value": ""
+    },
+    {
+      "key": "discardBatchId",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -78,11 +134,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Camiseta Fan {{runSuffix}}\",\n  \"salePrice\": 15.00,\n  \"purchaseCost\": 6.50\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/catalog/products"
           }
@@ -142,11 +207,20 @@
           ],
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"{{productName}}\",\n  \"salePrice\": 16.00,\n  \"purchaseCost\": 6.50\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/catalog/products/{{productId}}"
           }
@@ -191,9 +265,20 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/catalog/products?includeInactive=true",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "catalog", "products"],
-              "query": [{ "key": "includeInactive", "value": "true" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "true"
+                }
+              ]
             }
           }
         },
@@ -234,11 +319,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"{{productName}}\",\n  \"salePrice\": 15.00,\n  \"purchaseCost\": 6.50\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/catalog/products"
           }
@@ -260,11 +354,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Precio raro {{runSuffix}}\",\n  \"salePrice\": 15.999,\n  \"purchaseCost\": 6.50\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/catalog/products"
           }
@@ -299,11 +402,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Nombre + número {{runSuffix}}\",\n  \"salePrice\": 2.00,\n  \"purchaseCost\": 1.20\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/catalog/customizations"
           }
@@ -401,11 +513,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Cliente Demo\",\n  \"phone\": \"{{customerPhone}}\",\n  \"notes\": \"Pide siempre talla M\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/customers"
           }
@@ -447,9 +568,19 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/customers?search={{customerPhone}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "customers"],
-              "query": [{ "key": "search", "value": "{{customerPhone}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{customerPhone}}"
+                }
+              ]
             }
           }
         },
@@ -487,11 +618,20 @@
           ],
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Cliente Demo\",\n  \"phone\": \"{{customerPhone}}\",\n  \"notes\": \"Cliente habitual\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/customers/{{customerId}}"
           }
@@ -513,11 +653,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Otra Persona\",\n  \"phone\": \"{{customerPhone}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/customers"
           }
@@ -549,11 +698,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customerId\": {{customerId}},\n  \"notes\": \"Pedido de prueba desde Postman\",\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"M\",\n      \"customizations\": [\n        { \"customizationId\": {{customizationId}}, \"customText\": \"WILLIAMS JR 17\" }\n      ]\n    }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders"
           }
@@ -595,9 +753,20 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/sales/orders?customerId={{customerId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "sales", "orders"],
-              "query": [{ "key": "customerId", "value": "{{customerId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sales",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{customerId}}"
+                }
+              ]
             }
           }
         },
@@ -618,11 +787,20 @@
           ],
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customerId\": {{customerId}},\n  \"orderDate\": \"2026-10-15\",\n  \"notes\": \"Entregar en mano\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{orderId}}"
           }
@@ -648,11 +826,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"kitName\": \"Selección Española roja\",\n  \"size\": \"KIDS_24\",\n  \"customizations\": [\n    { \"customizationId\": {{customizationId}}, \"customText\": \"LUCAS 9\", \"salePrice\": 0 }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/lines"
           }
@@ -676,11 +863,20 @@
           ],
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"kitName\": \"Selección Española blanca 2 estrellas\",\n  \"size\": \"L\",\n  \"unitSalePrice\": 14.00,\n  \"customizations\": [\n    { \"customizationId\": {{customizationId}}, \"customText\": \"WILLIAMS JR 17\" }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/lines/{{firstLineId}}"
           }
@@ -745,11 +941,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customerId\": {{customerId}},\n  \"lines\": []\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders"
           }
@@ -800,11 +1005,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"customerId\": {{customerId}},\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"M\",\n      \"customizations\": [\n        { \"customizationId\": {{customizationId}}, \"customText\": \"WILLIAMS JR 17\" }\n      ]\n    }\n  ]\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders"
           }
@@ -829,11 +1043,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": 10.00,\n  \"notes\": \"Señal por Bizum\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
           }
@@ -855,11 +1078,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": 100.00\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
           }
@@ -903,11 +1135,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": {{paymentOrderTotal}}\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
           }
@@ -929,11 +1170,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": 0.01\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
           }
@@ -958,6 +1208,384 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/sales/orders/{{paymentOrderId}}/payments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Compras - Lotes al fabricante",
+      "item": [
+        {
+          "name": "Crear pedido con 3 camisetas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 y guarda las camisetas', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const ids = pm.response.json().lines.map(l => l.id);",
+                  "    pm.collectionVariables.set('batchLineIds', JSON.stringify(ids));",
+                  "    pm.collectionVariables.set('batchFirstLineId', ids[0]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"M\",\n      \"customizations\": [\n        {\n          \"customizationId\": {{customizationId}},\n          \"customText\": \"WILLIAMS JR 17\"\n        }\n      ]\n    },\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"L\",\n      \"customizations\": []\n    },\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"KIDS_24\",\n      \"customizations\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/sales/orders"
+          }
+        },
+        {
+          "name": "Ver camisetas pendientes de pedir",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y aparecen las 3 camisetas', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const pending = pm.response.json().map(l => l.lineId);",
+                  "    JSON.parse(pm.collectionVariables.get('batchLineIds')).forEach(id => pm.expect(pending).to.include(id));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/purchasing/pending-lines"
+          }
+        },
+        {
+          "name": "Crear lote (envío 4 €)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 y el envío repartido suma 4,00', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const batch = pm.response.json();",
+                  "    pm.expect(batch.status).to.eql('OPEN');",
+                  "    const shares = batch.lines.map(l => l.shippingShare);",
+                  "    pm.expect(shares).to.eql([1.34, 1.33, 1.33]);",
+                  "    pm.collectionVariables.set('batchId', batch.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lineIds\": {{batchLineIds}},\n  \"shippingCost\": 4.00,\n  \"notes\": \"Lote de prueba (Postman)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/purchasing/batches"
+          }
+        },
+        {
+          "name": "Error - camiseta ya en otro lote (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('ya está en otro lote');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lineIds\": {{batchLineIds}},\n  \"shippingCost\": 4.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/purchasing/batches"
+          }
+        },
+        {
+          "name": "Corregir el envío (6 €)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y 2,00 por camiseta', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().lines.map(l => l.shippingShare)).to.eql([2, 2, 2]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingCost\": 6.00,\n  \"notes\": \"Lote de prueba (Postman)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/purchasing/batches/{{batchId}}"
+          }
+        },
+        {
+          "name": "Quitar una camiseta del lote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y quedan 2', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().lines).to.have.lengthOf(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/purchasing/batches/{{batchId}}/lines/{{batchFirstLineId}}/remove"
+          }
+        },
+        {
+          "name": "Volver a añadirla",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y vuelven a ser 3', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().lines).to.have.lengthOf(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lineIds\": [{{batchFirstLineId}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/purchasing/batches/{{batchId}}/lines"
+          }
+        },
+        {
+          "name": "Enviar lote al fabricante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200, SENT y camisetas ORDERED', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const batch = pm.response.json();",
+                  "    pm.expect(batch.status).to.eql('SENT');",
+                  "    batch.lines.forEach(l => pm.expect(l.status).to.eql('ORDERED'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/purchasing/batches/{{batchId}}/send"
+          }
+        },
+        {
+          "name": "Error - cancelar un lote enviado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/purchasing/batches/{{batchId}}/cancel"
+          }
+        },
+        {
+          "name": "Crear pedido de 1 camiseta (lote a descartar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.collectionVariables.set('discardLineIds', JSON.stringify(pm.response.json().lines.map(l => l.id)));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"M\",\n      \"customizations\": [\n        {\n          \"customizationId\": {{customizationId}},\n          \"customText\": \"WILLIAMS JR 17\"\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/sales/orders"
+          }
+        },
+        {
+          "name": "Crear lote a descartar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.collectionVariables.set('discardBatchId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lineIds\": {{discardLineIds}},\n  \"shippingCost\": 4.00,\n  \"notes\": \"Lote de prueba (Postman)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/purchasing/batches"
+          }
+        },
+        {
+          "name": "Descartar lote (libera sus camisetas)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y CANCELLED', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql('CANCELLED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/purchasing/batches/{{discardBatchId}}/cancel"
+          }
+        },
+        {
+          "name": "Listar lotes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y aparecen los dos lotes', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const ids = pm.response.json().map(b => b.id);",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('batchId')));",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('discardBatchId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/purchasing/batches"
           }
         }
       ]
