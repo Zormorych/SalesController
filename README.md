@@ -1,5 +1,7 @@
 # SalesController
 
+[![CI](https://github.com/Zormorych/SalesController/actions/workflows/ci.yml/badge.svg)](https://github.com/Zormorych/SalesController/actions/workflows/ci.yml)
+
 Backend para gestionar la venta de camisetas: catálogo con precios, clientes, pedidos, cobros, lotes al fabricante (con su Excel) e informes de beneficio.
 
 Arquitectura, modelo de dominio y pasos de desarrollo: [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -48,6 +50,12 @@ Arquitectura, modelo de dominio y pasos de desarrollo: [docs/ROADMAP.md](docs/RO
 Los tests usan H2 en memoria (perfil `test`) y no necesitan Docker.
 
 `ModularityTests` comprueba que ningún módulo usa clases internas de otro y genera diagramas de los módulos en `target/spring-modulith-docs`.
+
+## Integración continua
+
+En cada push a cualquier rama, y en cada PR a `main`, GitHub Actions ejecuta `./mvnw verify` con JDK 21: compila, pasa los tests y verifica los módulos. El resultado se ve en la pestaña **Actions** del repositorio y en el propio PR. Si algo falla, los informes de tests se pueden descargar como artefacto `test-reports`.
+
+Workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Estructura
 
