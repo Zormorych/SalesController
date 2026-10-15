@@ -5,6 +5,10 @@ spring:
     default: dev
   jpa:
     open-in-view: false
+    properties:
+      hibernate:
+        # Carga las líneas y personalizaciones de varios pedidos en pocas consultas (evita N+1)
+        default_batch_fetch_size: 50
 
 server:
   port: 8080
