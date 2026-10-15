@@ -19,8 +19,7 @@ public record CreateSalesOrderRequest(
         String notes,
 
         @NotEmpty(message = "El pedido necesita al menos una línea")
-        @Valid
-        List<OrderLineRequest> lines) {
+        List<@Valid OrderLineRequest> lines) {
 
     List<OrderLineDraft> lineDrafts() {
         return lines.stream().map(OrderLineRequest::toDraft).toList();
