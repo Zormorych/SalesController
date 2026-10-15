@@ -1,6 +1,8 @@
 spring:
   application:
     name: sales-manager-backend
+  profiles:
+    default: dev
   jpa:
     open-in-view: false
 
