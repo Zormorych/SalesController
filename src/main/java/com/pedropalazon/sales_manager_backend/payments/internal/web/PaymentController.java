@@ -35,4 +35,9 @@ class PaymentController {
     PaymentSummary register(@PathVariable Long orderId, @Valid @RequestBody RegisterPaymentRequest request) {
         return service.register(orderId, request.amount(), request.paymentDate(), request.notes());
     }
+
+    @PostMapping("/{paymentId}/void")
+    PaymentSummary voidPayment(@PathVariable Long orderId, @PathVariable Long paymentId) {
+        return service.voidPayment(orderId, paymentId);
+    }
 }

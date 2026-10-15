@@ -5,6 +5,7 @@ import static com.pedropalazon.sales_manager_backend.shared.MoneyFormat.euros;
 import com.pedropalazon.sales_manager_backend.sales.SalesOrderApi;
 import com.pedropalazon.sales_manager_backend.sales.SalesOrderSnapshot;
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
+import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -43,6 +44,21 @@ public class PaymentService {
                     .formatted(euros(amount), order.orderNumber(), euros(pending)));
         }
         repository.save(new Payment(orderId, amount, paymentDate != null ? paymentDate : LocalDate.now(), notes));
+        return summaryOf(order);
+    }
+
+    // Se puede anular aunque el pedido esté cancelado: es justo el caso de devolver un cobro
+    @Transactional
+    public PaymentSummary voidPayment(Long orderId, Long paymentId) {
+        SalesOrderSnapshot order = salesOrderApi.getOrder(orderId);
+        Payment payment = repository.findById(paymentId)
+                .filter(found -> found.getSalesOrderId().equals(orderId))
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el pago %d en el pedido %s"
+                        .formatted(paymentId, order.orderNumber())));
+        if (payment.isVoided()) {
+            throw new BusinessRuleException("El pago %d ya está anulado".formatted(paymentId));
+        }
+        payment.voidPayment();
         return summaryOf(order);
     }
 

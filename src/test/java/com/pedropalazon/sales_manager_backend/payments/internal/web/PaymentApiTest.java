@@ -119,6 +119,41 @@ class PaymentApiTest {
     }
 
     @Test
+    void givenWrongPayment_whenVoided_thenStopsCountingAndFreesThatAmount() throws Exception {
+        long paymentId = paymentIdOf(pay("{\"amount\":10.00}").andExpect(status().isCreated()), 0);
+
+        mockMvc.perform(post("/api/sales/orders/" + orderId + "/payments/" + paymentId + "/void"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.payments[0].status").value("VOIDED"))
+                .andExpect(jsonPath("$.paidAmount").value(0.0))
+                .andExpect(jsonPath("$.pendingAmount").value(17.0));
+
+        pay("{\"amount\":17.00}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.paidAmount").value(17.0))
+                .andExpect(jsonPath("$.payments.length()").value(2));
+    }
+
+    @Test
+    void givenVoidedPayment_whenVoidingAgain_thenReturnsConflict() throws Exception {
+        long paymentId = paymentIdOf(pay("{\"amount\":10.00}").andExpect(status().isCreated()), 0);
+        mockMvc.perform(post("/api/sales/orders/" + orderId + "/payments/" + paymentId + "/void"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/sales/orders/" + orderId + "/payments/" + paymentId + "/void"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("El pago " + paymentId + " ya está anulado"));
+    }
+
+    @Test
+    void givenPaymentOfAnotherOrder_whenVoiding_thenReturnsNotFound() throws Exception {
+        long paymentId = paymentIdOf(pay("{\"amount\":10.00}").andExpect(status().isCreated()), 0);
+
+        mockMvc.perform(post("/api/sales/orders/999999/payments/" + paymentId + "/void"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void givenNoPaymentDate_whenPaying_thenUsesToday() throws Exception {
         pay("{\"amount\":5.00}")
                 .andExpect(status().isCreated())
@@ -128,6 +163,11 @@ class PaymentApiTest {
     private ResultActions pay(String json) throws Exception {
         return mockMvc.perform(post("/api/sales/orders/" + orderId + "/payments")
                 .contentType(MediaType.APPLICATION_JSON).content(json));
+    }
+
+    private static long paymentIdOf(ResultActions result, int index) throws Exception {
+        String body = result.andReturn().getResponse().getContentAsString();
+        return ((Number) JsonPath.read(body, "$.payments[" + index + "].id")).longValue();
     }
 
     private long createAndGetId(String url, String json) throws Exception {
