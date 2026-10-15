@@ -1,10 +1,11 @@
 name: CI
 
+# Solo "push": sus checks se asocian al commit y aparecen también en el PR abierto de esa rama.
+# Añadir "pull_request" haría que cada push a una rama con PR ejecutase el pipeline dos veces.
 on:
   push:
     branches: ["**"]
-  pull_request:
-    branches: [main]
+  workflow_dispatch: # botón "Run workflow" en la pestaña Actions para lanzarlo a mano
 
 # Si llega un push nuevo a la misma rama, cancela la ejecución anterior que siga en curso
 concurrency:
