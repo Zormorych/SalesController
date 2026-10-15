@@ -30,6 +30,7 @@ class PaymentApiTest {
     private MockMvc mockMvc;
 
     private long orderId;
+    private String createOrderJson;
 
     // Pedido de 17,00 €: Camiseta Fan (15,00) + Nombre y número (2,00)
     @BeforeEach
@@ -39,10 +40,11 @@ class PaymentApiTest {
         long customizationId = createAndGetId("/api/catalog/customizations",
                 "{\"name\":\"Nombre + número\",\"salePrice\":2.00,\"purchaseCost\":1.20}");
         long customerId = createAndGetId("/api/customers", "{\"name\":\"Ana Pérez\"}");
-        orderId = createAndGetId("/api/sales/orders", ("{\"customerId\":%d,\"lines\":[{\"productId\":%d,"
+        createOrderJson = ("{\"customerId\":%d,\"lines\":[{\"productId\":%d,"
                 + "\"kitName\":\"Selección Española blanca\",\"size\":\"M\","
                 + "\"customizations\":[{\"customizationId\":%d,\"customText\":\"WILLIAMS JR 17\"}]}]}")
-                .formatted(customerId, productId, customizationId));
+                .formatted(customerId, productId, customizationId);
+        orderId = createAndGetId("/api/sales/orders", createOrderJson);
     }
 
     @Test
@@ -146,11 +148,17 @@ class PaymentApiTest {
     }
 
     @Test
-    void givenPaymentOfAnotherOrder_whenVoiding_thenReturnsNotFound() throws Exception {
+    void givenPaymentOfAnotherOrder_whenVoidingThroughThatOrder_thenReturnsNotFoundAndKeepsThePayment()
+            throws Exception {
         long paymentId = paymentIdOf(pay("{\"amount\":10.00}").andExpect(status().isCreated()), 0);
+        long otherOrderId = createAndGetId("/api/sales/orders", createOrderJson);
 
-        mockMvc.perform(post("/api/sales/orders/999999/payments/" + paymentId + "/void"))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/sales/orders/" + otherOrderId + "/payments/" + paymentId + "/void"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(containsString("No existe el pago " + paymentId + " en el pedido SO-")));
+        mockMvc.perform(get("/api/sales/orders/" + orderId + "/payments"))
+                .andExpect(jsonPath("$.payments[0].status").value("REGISTERED"))
+                .andExpect(jsonPath("$.paidAmount").value(10.0));
     }
 
     @Test
