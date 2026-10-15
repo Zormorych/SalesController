@@ -58,4 +58,24 @@ class FactoryBatchController {
     FactoryBatchView.Details update(@PathVariable Long id, @Valid @RequestBody UpdateFactoryBatchRequest request) {
         return service.updateDetails(id, request.shippingCost(), request.notes());
     }
+
+    @PostMapping("/batches/{id}/lines")
+    FactoryBatchView.Details addLines(@PathVariable Long id, @Valid @RequestBody AddBatchLinesRequest request) {
+        return service.addLines(id, request.lineIds());
+    }
+
+    @PostMapping("/batches/{id}/lines/{lineId}/remove")
+    FactoryBatchView.Details removeLine(@PathVariable Long id, @PathVariable Long lineId) {
+        return service.removeLine(id, lineId);
+    }
+
+    @PostMapping("/batches/{id}/send")
+    FactoryBatchView.Details send(@PathVariable Long id) {
+        return service.send(id);
+    }
+
+    @PostMapping("/batches/{id}/cancel")
+    FactoryBatchView.Details cancel(@PathVariable Long id) {
+        return service.cancel(id);
+    }
 }

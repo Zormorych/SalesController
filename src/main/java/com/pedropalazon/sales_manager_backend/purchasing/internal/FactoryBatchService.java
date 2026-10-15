@@ -7,6 +7,7 @@ import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -62,6 +63,65 @@ public class FactoryBatchService {
         }
         batch.updateDetails(shippingCost, notes);
         return detailsOf(batch);
+    }
+
+    @Transactional
+    public FactoryBatchView.Details addLines(Long id, Collection<Long> lineIds) {
+        FactoryBatch batch = findOpen(id);
+        ensureLinesCanBeBatched(lineIds);
+        batch.addLines(lineIds);
+        return detailsOf(batch);
+    }
+
+    @Transactional
+    public FactoryBatchView.Details removeLine(Long id, Long lineId) {
+        FactoryBatch batch = findOpen(id);
+        if (!batch.removeLine(lineId)) {
+            throw new ResourceNotFoundException("La línea %d no está en el lote %s"
+                    .formatted(lineId, batch.getBatchNumber()));
+        }
+        return detailsOf(batch);
+    }
+
+    // Enviar el lote marca sus camisetas como pedidas al fabricante (ya no se pueden editar en el pedido)
+    @Transactional
+    public FactoryBatchView.Details send(Long id) {
+        FactoryBatch batch = findOpen(id);
+        List<OrderLineSnapshot> lines = batch.getLineIds().isEmpty()
+                ? List.of()
+                : salesOrderApi.getLines(batch.getLineIds());
+        if (lines.isEmpty()) {
+            throw new BusinessRuleException("El lote %s no tiene camisetas".formatted(batch.getBatchNumber()));
+        }
+        lines.stream()
+                .filter(line -> line.status() == LineStatus.CANCELLED)
+                .findFirst()
+                .ifPresent(line -> {
+                    throw new BusinessRuleException("La línea %d del lote está cancelada: quítala antes de enviar"
+                            .formatted(line.lineId()));
+                });
+        salesOrderApi.markLinesOrdered(batch.getLineIds());
+        batch.markSent(LocalDateTime.now());
+        return detailsOf(batch);
+    }
+
+    @Transactional
+    public FactoryBatchView.Details cancel(Long id) {
+        FactoryBatch batch = findOpen(id);
+        batch.cancel();
+        return detailsOf(batch);
+    }
+
+    private FactoryBatch findOpen(Long id) {
+        FactoryBatch batch = find(id);
+        if (batch.getStatus() == FactoryBatchStatus.SENT) {
+            throw new BusinessRuleException(
+                    "El lote %s ya se ha enviado y no se puede modificar".formatted(batch.getBatchNumber()));
+        }
+        if (batch.getStatus() == FactoryBatchStatus.CANCELLED) {
+            throw new BusinessRuleException("El lote %s está cancelado".formatted(batch.getBatchNumber()));
+        }
+        return batch;
     }
 
     FactoryBatch find(Long id) {

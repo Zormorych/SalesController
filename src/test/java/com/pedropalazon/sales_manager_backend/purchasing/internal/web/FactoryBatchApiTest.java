@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -144,7 +145,109 @@ class FactoryBatchApiTest {
                 .andExpect(jsonPath("$[1].lineCount").value(1));
     }
 
-    // --- helpers (los usa también FactoryBatchLifecycleApiTest) ---
+    // Ciclo de vida de un lote abierto: añadir/quitar camisetas, enviarlo o descartarlo
+    @Nested
+    class Lifecycle {
+
+        @Test
+        void givenOpenBatch_whenSent_thenIsSentAndItsLinesAreOrderedAndNoLongerEditable() throws Exception {
+            String order = createOrder(2);
+            long batchId = idOf(createBatch(lineIdsOf(order), "4.00").andReturn().getResponse().getContentAsString());
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("SENT"))
+                    .andExpect(jsonPath("$.sentAt").isNotEmpty())
+                    .andExpect(jsonPath("$.lines[*].status").value(contains("ORDERED", "ORDERED")));
+            mockMvc.perform(get("/api/sales/orders/" + idOf(order)))
+                    .andExpect(jsonPath("$.lines[*].status").value(contains("ORDERED", "ORDERED")));
+            mockMvc.perform(post("/api/sales/orders/" + idOf(order) + "/lines/" + lineIdsOf(order).get(0) + "/cancel"))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        void givenSentBatch_whenChangingLinesOrCancelling_thenReturnsConflict() throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long batchId = idOf(createBatch(lines.subList(0, 1), "4.00").andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send")).andExpect(status().isOk());
+
+            addLines(batchId, lines.subList(1, 2))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("ya se ha enviado y no se puede modificar")));
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/lines/" + lines.get(0) + "/remove"))
+                    .andExpect(status().isConflict());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/cancel"))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        void givenOpenBatch_whenCancelled_thenItsLinesAreFreeAgain() throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long batchId = idOf(createBatch(lines, "4.00").andReturn().getResponse().getContentAsString());
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/cancel"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("CANCELLED"))
+                    .andExpect(jsonPath("$.lines.length()").value(0));
+            mockMvc.perform(get(PENDING))
+                    .andExpect(jsonPath("$[*].lineId").value(contains(asInts(lines))));
+            createBatch(lines, "4.00").andExpect(status().isCreated());
+        }
+
+        @Test
+        void givenOpenBatch_whenAddingAndRemovingLines_thenUpdatesItsLines() throws Exception {
+            List<Long> lines = createOrderWithLines(3);
+            long batchId = idOf(createBatch(lines.subList(0, 1), "4.00").andReturn().getResponse().getContentAsString());
+
+            addLines(batchId, lines.subList(1, 3))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.lines[*].lineId").value(contains(asInts(lines))));
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/lines/" + lines.get(1) + "/remove"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.lines[*].lineId").value(contains(lines.get(0).intValue(), lines.get(2).intValue())));
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/lines/" + lines.get(1) + "/remove"))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void givenLineCancelledInsideOpenBatch_whenViewingAndSending_thenGetsNoShippingAndBlocksSending()
+                throws Exception {
+            String order = createOrder(3);
+            List<Long> lines = lineIdsOf(order);
+            long batchId = idOf(createBatch(lines, "4.00").andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post("/api/sales/orders/" + idOf(order) + "/lines/" + lines.get(2) + "/cancel"))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get(BATCHES + "/" + batchId))
+                    .andExpect(jsonPath("$.lines[*].shippingShare").value(contains(2.0, 2.0, 0.0)))
+                    .andExpect(jsonPath("$.totals.activeLines").value(2));
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail")
+                            .value("La línea " + lines.get(2) + " del lote está cancelada: quítala antes de enviar"));
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/lines/" + lines.get(2) + "/remove")).andExpect(status().isOk());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send")).andExpect(status().isOk());
+        }
+
+        @Test
+        void givenEmptyOpenBatch_whenSent_thenReturnsConflict() throws Exception {
+            List<Long> lines = createOrderWithLines(1);
+            long batchId = idOf(createBatch(lines, "4.00").andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/lines/" + lines.get(0) + "/remove")).andExpect(status().isOk());
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("no tiene camisetas")));
+        }
+
+        private ResultActions addLines(long batchId, List<Long> lineIds) throws Exception {
+            return mockMvc.perform(post(BATCHES + "/" + batchId + "/lines").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"lineIds\":%s}".formatted(lineIds)));
+        }
+    }
+
+    // --- helpers ---
 
     ResultActions createBatch(List<Long> lineIds, String shippingCost) throws Exception {
         return mockMvc.perform(post(BATCHES).contentType(MediaType.APPLICATION_JSON)
