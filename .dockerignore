@@ -1,0 +1,13 @@
+# Solo se envía a Docker lo necesario para compilar: pom.xml, mvnw, .mvn y src
+.git
+.github
+.idea
+.vscode
+.claude
+.superpowers
+target
+docs
+backups
+*.md
+.env
+.env.*
