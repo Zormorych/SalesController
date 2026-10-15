@@ -1,3 +1,6 @@
+# Todo el proyecto (base de datos + backend):   docker compose up -d --build
+# Solo la base de datos (para desarrollar con IntelliJ):   docker compose up -d postgres
+# Los valores entre ${...} se pueden cambiar en un fichero .env (ver .env.example)
 services:
   postgres:
     image: postgres:17-alpine
@@ -15,6 +18,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: sales-manager-backend:local
+    container_name: sales-manager-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # Dentro de la red de Docker la base de datos se llama "postgres", no "localhost"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sales_manager}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-sales_manager}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-sales_manager}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
 
 volumes:
   postgres_data:
