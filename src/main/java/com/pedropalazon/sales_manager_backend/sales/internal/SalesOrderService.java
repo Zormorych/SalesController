@@ -98,12 +98,6 @@ public class SalesOrderService {
     @Transactional
     public SalesOrderView.Details cancel(Long id) {
         SalesOrder order = findOpen(id);
-        boolean hasLinesInProgress = order.getLines().stream()
-                .anyMatch(line -> !line.isPending() && !line.isCancelled());
-        if (hasLinesInProgress) {
-            throw new BusinessRuleException("El pedido %s tiene camisetas ya pedidas al fabricante y no se puede cancelar"
-                    .formatted(order.getOrderNumber()));
-        }
         order.cancel();
         return detailsOf(order);
     }
