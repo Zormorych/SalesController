@@ -154,7 +154,7 @@ Commits:
 1. `feat: expose catalog and customer lookups to other modules` — APIs públicas `CatalogApi` y `CustomerApi`: `sales` no toca clases internas de otros módulos.
 2. `feat: add sales order and line entities with migration` — `SalesOrder` → `SalesOrderLine` → `LineCustomization`, migración `V4`, número `SO-<año>-<secuencia>` con una secuencia de BD, totales calculados.
 3. `feat: create orders copying catalog prices with manual overrides` — `POST/GET /api/sales/orders`. Los precios se copian del catálogo; si llegan en la petición (incluido 0) se usan esos.
-4. `feat: list, edit and cancel orders and lines` — listado (`?customerId=`), editar cabecera, añadir/sustituir/cancelar líneas y cancelar el pedido. Solo pedidos abiertos y líneas `PENDING`; no se puede cancelar la última línea (se cancela el pedido).
+4. `feat: list, edit and cancel orders and lines` — listado (`?customerId=`), editar cabecera, añadir/sustituir/cancelar líneas y cancelar el pedido. Solo pedidos abiertos y líneas `PENDING`; no se puede cancelar la última línea (se cancela el pedido). Un producto o personalización desactivados no se pueden añadir, pero una línea que ya los tenía se puede seguir editando (por ejemplo, para cambiar la talla).
 
 ### Paso 4 — Cobros · rama `feature/payments`
 
