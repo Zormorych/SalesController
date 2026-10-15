@@ -7,10 +7,9 @@ on:
     branches: ["**"]
   workflow_dispatch: # botón "Run workflow" en la pestaña Actions para lanzarlo a mano
 
-# Si llega un push nuevo a la misma rama, cancela la ejecución anterior que siga en curso
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+# Sin bloque "concurrency": cada commit tiene su ejecución completa aunque se hagan varios push seguidos.
+# Con "cancel-in-progress" las ejecuciones anteriores se cancelaban y salían en GitHub como si hubieran fallado.
+# El repositorio es público, así que los minutos de Actions no tienen coste.
 
 # Cada job es una "stage" (como en GitLab). "needs" fija el orden:
 #   compile ──┬── test ─────────┬── package (.jar)
