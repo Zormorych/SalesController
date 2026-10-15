@@ -29,6 +29,8 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: dev
+      # Sin esto la JVM del contenedor usa UTC y un pedido creado a las 00:30 quedaría con fecha de ayer
+      TZ: ${TZ:-Europe/Madrid}
       # Dentro de la red de Docker la base de datos se llama "postgres", no "localhost"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sales_manager}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-sales_manager}
