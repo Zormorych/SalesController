@@ -53,7 +53,14 @@ Los tests usan H2 en memoria (perfil `test`) y no necesitan Docker.
 
 ## Integración continua
 
-En cada push a cualquier rama, y en cada PR a `main`, GitHub Actions ejecuta `./mvnw verify` con JDK 21: compila, pasa los tests y verifica los módulos. El resultado se ve en la pestaña **Actions** del repositorio y en el propio PR. Si algo falla, los informes de tests se pueden descargar como artefacto `test-reports`.
+En cada push a cualquier rama, y en cada PR a `main`, GitHub Actions ejecuta el pipeline con JDK 21, por etapas:
+
+```text
+Compilar ──┬── Tests ────────────────┬── Empaquetar (.jar)
+           └── Arquitectura (módulos) ┘
+```
+
+Si una etapa falla, las siguientes no se ejecutan. El resultado se ve en la pestaña **Actions** del repositorio y en el propio PR. Cada ejecución deja como artefactos descargables los informes de tests (`test-reports`), los diagramas de módulos (`module-diagrams`) y el `.jar`.
 
 Workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
