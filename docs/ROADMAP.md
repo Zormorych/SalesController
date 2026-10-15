@@ -93,9 +93,9 @@ purchasing
   (shippingCost es editable; el valor por defecto, normalmente 4,00 €, lo propone el frontend, no el backend)
 ```
 
-**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado, desde el Paso 5) → `RECEIVED` → `DELIVERED`. Desde cualquiera de los anteriores a `DELIVERED` se puede pasar a `CANCELLED`.
+**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado, desde el Paso 5) → `RECEIVED` → `DELIVERED`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (qué hacer con ella se decide en el Paso 7).
 
-**Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito. Hasta el Paso 7 el pedido solo distingue `OPEN` y `CANCELLED`, y las líneas `PENDING` y `CANCELLED`.
+**Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito. Hasta el Paso 7 el pedido solo distingue `OPEN` y `CANCELLED`, y las líneas `PENDING`, `ORDERED` y `CANCELLED`.
 
 **Cálculos** (no se guardan en BD, se calculan):
 
@@ -182,10 +182,12 @@ Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `s
 
 ### Paso 7 — Recepción y entrega · rama `feature/receive-deliver`
 
-1. `feat: mark batch as received`
+1. `feat: mark batch as received` — al recibir un lote se marca **cada camiseta**: recibida o **no llegada**. Puede faltar alguna sin que el fabricante avise (por ejemplo, 1 de 10). Las recibidas pasan a `RECEIVED`; las no llegadas no se dan por recibidas y vuelven a quedar pendientes de pedir, para reclamarlas o meterlas en el siguiente lote, sin perder el registro de en qué lote faltaron. El lote queda recibido aunque falte alguna.
+   - Test obligatorio: lote de 10 camisetas en el que llegan 9 → 9 `RECEIVED`, 1 vuelve a pendientes y aparece como no llegada en el detalle del lote.
 2. `feat: mark lines as delivered`
 3. `feat: derive order status from its lines`
-4. `test: cover status transitions`
+4. `feat: decide what happens to an ordered shirt the customer no longer wants` — hoy está bloqueado (no se puede cancelar una camiseta ya pedida); opciones: pasarla a stock o darla por perdida manteniendo su coste.
+5. `test: cover status transitions`
 
 ### Paso 8 — Informes · rama `feature/reports`
 
