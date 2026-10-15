@@ -111,6 +111,24 @@ Los tests usan H2 en memoria (perfil `test`) y no necesitan Docker.
 
 `ModularityTests` comprueba que ningún módulo usa clases internas de otro y genera diagramas de los módulos en `target/spring-modulith-docs`.
 
+## Pruebas manuales con Postman
+
+En [postman/](postman/) hay una colección con todos los endpoints y un entorno local:
+
+1. En Postman: **File → Import** y arrastra los dos ficheros:
+   - `SalesController.postman_collection.json`
+   - `SalesController-local.postman_environment.json`
+2. Arriba a la derecha selecciona el entorno **SalesController - Local**. Si el backend no está en el puerto 8080, cambia `baseUrl` (por ejemplo `http://localhost:8081`).
+3. Ejecuta las peticiones en orden, o la colección entera con **Run collection**. Las peticiones de creación guardan los ids (`productId`, `customerId`, `orderId`…) que usan las siguientes. Cada petición tiene tests que comprueban la respuesta.
+
+Los nombres y teléfonos de prueba llevan un sufijo aleatorio, así que se puede ejecutar varias veces. Los datos quedan en la base de datos de desarrollo.
+
+También se puede ejecutar sin abrir Postman, con Node instalado:
+
+```powershell
+npx newman run postman/SalesController.postman_collection.json -e postman/SalesController-local.postman_environment.json --env-var baseUrl=http://localhost:8080
+```
+
 ## Integración continua
 
 En cada push a cualquier rama GitHub Actions ejecuta el pipeline con JDK 21 (sus checks aparecen también en el PR de esa rama). También se puede lanzar a mano con **Run workflow** en la pestaña Actions. Va por etapas:
