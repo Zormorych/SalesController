@@ -1,0 +1,779 @@
+{
+  "info": {
+    "name": "SalesController",
+    "description": "Pruebas manuales de la API de SalesController.\n\n**Cómo usarla**\n1. Importa esta colección y el entorno `SalesController-local.postman_environment.json` (File → Import).\n2. Selecciona el entorno **SalesController - Local** arriba a la derecha y ajusta `baseUrl` si el backend no está en el puerto 8080.\n3. Ejecuta las carpetas en orden (o la colección entera con *Run collection*): las peticiones de creación guardan los ids (`productId`, `customerId`, `orderId`...) que usan las siguientes.\n\nLos nombres y teléfonos de prueba llevan un sufijo aleatorio para poder ejecutar la colección varias veces sin chocar con los datos anteriores.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "productId", "value": "" },
+    { "key": "productName", "value": "" },
+    { "key": "customizationId", "value": "" },
+    { "key": "customerId", "value": "" },
+    { "key": "customerPhone", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "firstLineId", "value": "" },
+    { "key": "addedLineId", "value": "" },
+    { "key": "runSuffix", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Salud",
+      "item": [
+        {
+          "name": "Comprobar que el backend responde",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y status UP', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql('UP');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Catálogo - Productos",
+      "item": [
+        {
+          "name": "Crear producto",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Sufijo para no chocar con productos de ejecuciones anteriores (el nombre es único)",
+                  "pm.collectionVariables.set('runSuffix', Date.now().toString().slice(-6));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created con precios', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const product = pm.response.json();",
+                  "    pm.expect(product.salePrice).to.eql(15.00);",
+                  "    pm.expect(product.purchaseCost).to.eql(6.50);",
+                  "    pm.expect(product.active).to.be.true;",
+                  "    pm.collectionVariables.set('productId', product.id);",
+                  "    pm.collectionVariables.set('productName', product.name);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Camiseta Fan {{runSuffix}}\",\n  \"salePrice\": 15.00,\n  \"purchaseCost\": 6.50\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/catalog/products"
+          }
+        },
+        {
+          "name": "Listar productos activos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y aparece el producto creado', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const ids = pm.response.json().map(p => p.id);",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('productId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/products"
+          }
+        },
+        {
+          "name": "Ver producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Editar precios del producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con el precio nuevo', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().salePrice).to.eql(16.00);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{productName}}\",\n  \"salePrice\": 16.00,\n  \"purchaseCost\": 6.50\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/catalog/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Desactivar producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y active=false', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().active).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/catalog/products/{{productId}}/deactivate"
+          }
+        },
+        {
+          "name": "Listar productos incluidos los desactivados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y el producto desactivado aparece', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const product = pm.response.json().find(p => p.id === Number(pm.collectionVariables.get('productId')));",
+                  "    pm.expect(product.active).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/products?includeInactive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "catalog", "products"],
+              "query": [{ "key": "includeInactive", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "Activar producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y active=true', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().active).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/catalog/products/{{productId}}/activate"
+          }
+        },
+        {
+          "name": "Error - nombre duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 con mensaje en español', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('Ya existe un producto llamado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{productName}}\",\n  \"salePrice\": 15.00,\n  \"purchaseCost\": 6.50\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/catalog/products"
+          }
+        },
+        {
+          "name": "Error - precio con 3 decimales (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 con error en salePrice', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().errors[0].field).to.eql('salePrice');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Precio raro {{runSuffix}}\",\n  \"salePrice\": 15.999,\n  \"purchaseCost\": 6.50\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/catalog/products"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Catálogo - Personalizaciones",
+      "item": [
+        {
+          "name": "Crear personalización",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('runSuffix', Date.now().toString().slice(-6));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.collectionVariables.set('customizationId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nombre + número {{runSuffix}}\",\n  \"salePrice\": 2.00,\n  \"purchaseCost\": 1.20\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/catalog/customizations"
+          }
+        },
+        {
+          "name": "Listar personalizaciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/customizations"
+          }
+        },
+        {
+          "name": "Ver personalización",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/customizations/{{customizationId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Catálogo - Tallas",
+      "item": [
+        {
+          "name": "Listar tallas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con 12 tallas', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.lengthOf(12);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/catalog/sizes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Clientes",
+      "item": [
+        {
+          "name": "Crear cliente",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Teléfono aleatorio: el teléfono es único entre clientes",
+                  "const digits = Math.floor(10000000 + Math.random() * 89999999);",
+                  "pm.collectionVariables.set('customerPhone', '6' + digits);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 con el teléfono normalizado', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const customer = pm.response.json();",
+                  "    pm.expect(customer.phone).to.eql(pm.collectionVariables.get('customerPhone'));",
+                  "    pm.collectionVariables.set('customerId', customer.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cliente Demo\",\n  \"phone\": \"{{customerPhone}}\",\n  \"notes\": \"Pide siempre talla M\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/customers"
+          }
+        },
+        {
+          "name": "Listar clientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customers"
+          }
+        },
+        {
+          "name": "Buscar cliente por teléfono",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y lo encuentra', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const ids = pm.response.json().map(c => c.id);",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('customerId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers?search={{customerPhone}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers"],
+              "query": [{ "key": "search", "value": "{{customerPhone}}" }]
+            }
+          }
+        },
+        {
+          "name": "Ver cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "Editar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con las notas nuevas', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().notes).to.eql('Cliente habitual');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cliente Demo\",\n  \"phone\": \"{{customerPhone}}\",\n  \"notes\": \"Cliente habitual\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "Error - teléfono duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 que nombra al dueño del teléfono', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('ya pertenece al cliente');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otra Persona\",\n  \"phone\": \"{{customerPhone}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/customers"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Ventas - Pedidos",
+      "item": [
+        {
+          "name": "Crear pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 con totales calculados', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const order = pm.response.json();",
+                  "    pm.expect(order.orderNumber).to.match(/^SO-\\d{4}-\\d{6,}$/);",
+                  "    pm.expect(order.status).to.eql('OPEN');",
+                  "    pm.expect(order.totals.activeLines).to.eql(1);",
+                  "    pm.collectionVariables.set('orderId', order.id);",
+                  "    pm.collectionVariables.set('firstLineId', order.lines[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"notes\": \"Pedido de prueba desde Postman\",\n  \"lines\": [\n    {\n      \"productId\": {{productId}},\n      \"kitName\": \"Selección Española blanca 2 estrellas\",\n      \"size\": \"M\",\n      \"customizations\": [\n        { \"customizationId\": {{customizationId}}, \"customText\": \"WILLIAMS JR 17\" }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders"
+          }
+        },
+        {
+          "name": "Ver pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "Listar pedidos del cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y aparece el pedido', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const ids = pm.response.json().map(o => o.id);",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('orderId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sales/orders?customerId={{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sales", "orders"],
+              "query": [{ "key": "customerId", "value": "{{customerId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Editar cabecera del pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con notas nuevas', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().notes).to.eql('Entregar en mano');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"orderDate\": \"2026-10-15\",\n  \"notes\": \"Entregar en mano\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "Añadir línea (personalización gratis)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 con dos líneas y la personalización a 0', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "    const order = pm.response.json();",
+                  "    pm.expect(order.totals.activeLines).to.eql(2);",
+                  "    const added = order.lines[order.lines.length - 1];",
+                  "    pm.expect(added.customizations[0].salePrice).to.eql(0);",
+                  "    pm.collectionVariables.set('addedLineId', added.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"kitName\": \"Selección Española roja\",\n  \"size\": \"KIDS_24\",\n  \"customizations\": [\n    { \"customizationId\": {{customizationId}}, \"customText\": \"LUCAS 9\", \"salePrice\": 0 }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/lines"
+          }
+        },
+        {
+          "name": "Sustituir línea (cambiar talla y precio)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con la talla y el precio nuevos', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const line = pm.response.json().lines.find(l => l.id === Number(pm.collectionVariables.get('firstLineId')));",
+                  "    pm.expect(line.size).to.eql('L');",
+                  "    pm.expect(line.unitSalePrice).to.eql(14.00);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"kitName\": \"Selección Española blanca 2 estrellas\",\n  \"size\": \"L\",\n  \"unitSalePrice\": 14.00,\n  \"customizations\": [\n    { \"customizationId\": {{customizationId}}, \"customText\": \"WILLIAMS JR 17\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/lines/{{firstLineId}}"
+          }
+        },
+        {
+          "name": "Cancelar línea añadida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200, la línea queda CANCELLED y no suma', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const order = pm.response.json();",
+                  "    const line = order.lines.find(l => l.id === Number(pm.collectionVariables.get('addedLineId')));",
+                  "    pm.expect(line.status).to.eql('CANCELLED');",
+                  "    pm.expect(order.totals.activeLines).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/lines/{{addedLineId}}/cancel"
+          }
+        },
+        {
+          "name": "Error - cancelar la última línea (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409: hay que cancelar el pedido entero', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(pm.response.json().detail).to.include('cancela el pedido entero');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/lines/{{firstLineId}}/cancel"
+          }
+        },
+        {
+          "name": "Error - pedido sin líneas (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 con error en lines', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().errors[0].field).to.eql('lines');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": {{customerId}},\n  \"lines\": []\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/sales/orders"
+          }
+        },
+        {
+          "name": "Cancelar pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200, pedido CANCELLED y totales a 0', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const order = pm.response.json();",
+                  "    pm.expect(order.status).to.eql('CANCELLED');",
+                  "    pm.expect(order.totals.sale).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/sales/orders/{{orderId}}/cancel"
+          }
+        }
+      ]
+    }
+  ]
+}
