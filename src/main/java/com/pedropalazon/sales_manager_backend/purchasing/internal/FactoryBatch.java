@@ -102,6 +102,12 @@ public class FactoryBatch {
         this.receivedAt = when;
     }
 
+    // Una camiseta que no llegó con el lote llega después: vuelve a formar parte de él
+    public void markArrived(Long lineId) {
+        missingLineIds.remove(lineId);
+        lineIds.add(lineId);
+    }
+
     // Un lote descartado deja libres sus camisetas para poder pedirlas en otro
     public void cancel() {
         this.status = FactoryBatchStatus.CANCELLED;

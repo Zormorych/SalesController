@@ -100,7 +100,7 @@ public class SalesOrderService {
     public SalesOrderView.Details cancel(Long id) {
         SalesOrder order = findOpen(id);
         // Una camiseta ya pedida al fabricante se fabrica y se paga igual: cancelarla falsearía el coste
-        // y el envío de su lote. Qué hacer con ella (stock, pérdida...) se decidirá con la recepción (Paso 7).
+        // y el envío de su lote. Qué hacer si el cliente ya no la quiere (stock, pérdida...) está pendiente de decidir.
         boolean hasShirtsAlreadyOrdered = order.getLines().stream()
                 .anyMatch(line -> !line.isPending() && !line.isCancelled());
         if (hasShirtsAlreadyOrdered) {
@@ -131,6 +131,9 @@ public class SalesOrderService {
         if (line.getStatus() == LineStatus.DELIVERED) {
             throw new BusinessRuleException("La línea %d ya está entregada".formatted(lineId));
         }
+        if (line.isCancelled()) {
+            throw new BusinessRuleException("La línea %d está cancelada".formatted(lineId));
+        }
         if (line.getStatus() != LineStatus.RECEIVED) {
             throw new BusinessRuleException("La línea %d todavía no se ha recibido".formatted(lineId));
         }
@@ -146,7 +149,8 @@ public class SalesOrderService {
                 .filter(line -> line.getStatus() == LineStatus.RECEIVED)
                 .toList();
         if (received.isEmpty()) {
-            throw new BusinessRuleException("El pedido no tiene camisetas recibidas pendientes de entregar");
+            throw new BusinessRuleException("El pedido %s no tiene camisetas recibidas pendientes de entregar"
+                    .formatted(order.getOrderNumber()));
         }
         received.forEach(SalesOrderLine::markDelivered);
         return detailsOf(order);

@@ -65,7 +65,7 @@ class SalesOrderDeliveryApiTest {
         String order = createOrder(3);
         List<Long> lines = lineIdsOf(order);
         salesOrderApi.markLinesOrdered(lines);
-        salesOrderApi.markLinesReceived(lines.subList(0, 2));
+        salesOrderApi.receiveLines(lines.subList(0, 2), List.of());
 
         mockMvc.perform(post(ORDERS + "/" + idOf(order) + "/deliver"))
                 .andExpect(status().isOk())
@@ -82,6 +82,17 @@ class SalesOrderDeliveryApiTest {
         mockMvc.perform(post(ORDERS + "/" + idOf(order) + "/lines/" + lineId + "/deliver"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("La línea " + lineId + " todavía no se ha recibido"));
+    }
+
+    @Test
+    void givenCancelledShirt_whenDelivered_thenConflictSaysItIsCancelled() throws Exception {
+        String order = createOrder(2);
+        long lineId = lineIdsOf(order).get(1);
+        mockMvc.perform(post(ORDERS + "/" + idOf(order) + "/lines/" + lineId + "/cancel")).andExpect(status().isOk());
+
+        mockMvc.perform(post(ORDERS + "/" + idOf(order) + "/lines/" + lineId + "/deliver"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("La línea " + lineId + " está cancelada"));
     }
 
     @Test
@@ -102,12 +113,12 @@ class SalesOrderDeliveryApiTest {
 
         mockMvc.perform(post(ORDERS + "/" + idOf(order) + "/deliver"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("El pedido no tiene camisetas recibidas pendientes de entregar"));
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("no tiene camisetas recibidas pendientes de entregar")));
     }
 
     private void orderAndReceive(List<Long> lineIds) {
         salesOrderApi.markLinesOrdered(lineIds);
-        salesOrderApi.markLinesReceived(lineIds);
+        salesOrderApi.receiveLines(lineIds, List.of());
     }
 
     private String createOrder(int lineCount) throws Exception {

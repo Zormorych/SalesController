@@ -137,18 +137,39 @@ public class FactoryBatchService {
                 });
         Set<Long> received = new HashSet<>(batch.getLineIds());
         received.removeAll(missing);
+        // Un lote "recibido" sin ninguna camiseta dejaría su envío sin asignar a nadie: no se acepta
+        if (received.isEmpty()) {
+            throw new BusinessRuleException("En el lote %s no ha llegado ninguna camiseta: no se puede dar por recibido"
+                    .formatted(batch.getBatchNumber()));
+        }
 
-        if (!received.isEmpty()) {
-            salesOrderApi.markLinesReceived(received);
-        }
-        if (!missing.isEmpty()) {
-            salesOrderApi.returnLinesToPending(missing);
-        }
+        salesOrderApi.receiveLines(received, missing);
         batch.markReceived(missing, LocalDateTime.now());
         return detailsOf(batch);
     }
 
-    // Se puede generar con el lote abierto (para revisarlo antes de enviarlo) o ya enviado.
+    // La camiseta que no llegó con el lote la manda el fabricante más tarde (por ejemplo, tras reclamarla):
+    // vuelve a su lote como recibida y el envío se reparte también con ella
+    @Transactional
+    public FactoryBatchView.Details markMissingLineArrived(Long id, Long lineId) {
+        FactoryBatch batch = lock(id);
+        if (batch.getStatus() != FactoryBatchStatus.RECEIVED) {
+            throw new BusinessRuleException("El lote %s todavía no se ha recibido".formatted(batch.getBatchNumber()));
+        }
+        if (!batch.getMissingLineIds().contains(lineId)) {
+            throw new ResourceNotFoundException("La línea %d no figura como no llegada en el lote %s"
+                    .formatted(lineId, batch.getBatchNumber()));
+        }
+        if (repository.findAssignedLineIds().contains(lineId)) {
+            throw new BusinessRuleException(
+                    "La línea %d ya está en otro lote: márcala como recibida al recibir ese lote".formatted(lineId));
+        }
+        salesOrderApi.markLateArrivalReceived(lineId);
+        batch.markArrived(lineId);
+        return detailsOf(batch);
+    }
+
+    // Se puede generar con el lote abierto (para revisarlo antes de enviarlo), enviado o recibido.
     // Las camisetas canceladas no se piden, así que no salen.
     @Transactional(readOnly = true)
     public ExcelFile excel(Long id) {

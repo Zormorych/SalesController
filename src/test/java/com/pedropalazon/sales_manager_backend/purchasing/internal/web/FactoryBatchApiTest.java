@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -344,6 +346,45 @@ class FactoryBatchApiTest {
             receive(sentBatch, "{}")
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.detail").value(containsString("ya se ha recibido")));
+        }
+
+        @Test
+        void givenMissingShirtThatTheFactorySendsLater_whenMarkedArrived_thenIsReceivedInItsBatchAgain()
+                throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long batchId = sentBatch(lines, "4.00");
+            receive(batchId, "{\"missingLineIds\":[" + lines.get(1) + "]}").andExpect(status().isOk());
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/missing-lines/" + lines.get(1) + "/arrived"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.lines[*].status").value(contains("RECEIVED", "RECEIVED")))
+                    .andExpect(jsonPath("$.lines[*].shippingShare").value(contains(2.0, 2.0)))
+                    .andExpect(jsonPath("$.missingLines.length()").value(0));
+            mockMvc.perform(get(PENDING))
+                    .andExpect(jsonPath("$[*].lineId").value(not(hasItem(lines.get(1).intValue()))));
+        }
+
+        @Test
+        void givenMissingShirtAlreadyOrderedAgainInAnotherBatch_whenMarkedArrived_thenReturnsConflict()
+                throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long batchId = sentBatch(lines, "4.00");
+            receive(batchId, "{\"missingLineIds\":[" + lines.get(1) + "]}").andExpect(status().isOk());
+            createBatch(List.of(lines.get(1)), "4.00").andExpect(status().isCreated());
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/missing-lines/" + lines.get(1) + "/arrived"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("ya está en otro lote")));
+        }
+
+        @Test
+        void givenSentBatch_whenMarkingEveryShirtAsMissing_thenReturnsConflict() throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long batchId = sentBatch(lines, "4.00");
+
+            receive(batchId, "{\"missingLineIds\":" + lines + "}")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("no ha llegado ninguna camiseta")));
         }
 
         @Test

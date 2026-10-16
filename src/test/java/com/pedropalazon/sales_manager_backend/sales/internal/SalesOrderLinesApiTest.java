@@ -127,7 +127,7 @@ class SalesOrderLinesApiTest {
         List<Long> lineIds = order.lines().stream().map(SalesOrderView.Line::id).toList();
         salesOrderApi.markLinesOrdered(lineIds);
 
-        salesOrderApi.markLinesReceived(lineIds);
+        salesOrderApi.receiveLines(lineIds, List.of());
 
         SalesOrderView.Details reloaded = salesOrderService.get(order.id());
         assertThat(reloaded.lines()).allSatisfy(line -> assertThat(line.status()).isEqualTo(LineStatus.RECEIVED));
@@ -142,7 +142,7 @@ class SalesOrderLinesApiTest {
         SalesOrderView.Details order = createOrder(anaId, LocalDate.of(2026, 10, 10), line("M", null));
         Long lineId = order.lines().get(0).id();
 
-        assertThatThrownBy(() -> salesOrderApi.markLinesReceived(List.of(lineId)))
+        assertThatThrownBy(() -> salesOrderApi.receiveLines(List.of(lineId), List.of()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessage("La línea " + lineId + " no está pedida al fabricante");
     }
@@ -153,7 +153,7 @@ class SalesOrderLinesApiTest {
         Long lineId = order.lines().get(0).id();
         salesOrderApi.markLinesOrdered(List.of(lineId));
 
-        salesOrderApi.returnLinesToPending(List.of(lineId));
+        salesOrderApi.receiveLines(List.of(), List.of(lineId));
 
         assertThat(salesOrderApi.findPendingLines()).extracting(OrderLineSnapshot::lineId).contains(lineId);
         salesOrderService.cancelLine(order.id(), lineId);
@@ -165,9 +165,9 @@ class SalesOrderLinesApiTest {
         SalesOrderView.Details order = createOrder(anaId, LocalDate.of(2026, 10, 10), line("M", null));
         Long lineId = order.lines().get(0).id();
         salesOrderApi.markLinesOrdered(List.of(lineId));
-        salesOrderApi.markLinesReceived(List.of(lineId));
+        salesOrderApi.receiveLines(List.of(lineId), List.of());
 
-        assertThatThrownBy(() -> salesOrderApi.returnLinesToPending(List.of(lineId)))
+        assertThatThrownBy(() -> salesOrderApi.receiveLines(List.of(), List.of(lineId)))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessage("La línea " + lineId + " no está pedida al fabricante");
     }

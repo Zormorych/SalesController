@@ -24,9 +24,11 @@ public interface SalesOrderApi {
     // no se marca ninguna (BusinessRuleException). Exige una transacción en curso.
     void markLinesOrdered(Collection<Long> lineIds);
 
-    // Camisetas que han llegado del fabricante (deben estar pedidas). Todo o nada. Exige una transacción.
-    void markLinesReceived(Collection<Long> lineIds);
+    // Recepción de un lote: las recibidas pasan a RECEIVED y las que no llegaron vuelven a pendientes de pedir.
+    // Todas deben estar pedidas al fabricante; si alguna no lo está no cambia ninguna. Exige una transacción.
+    void receiveLines(Collection<Long> receivedLineIds, Collection<Long> missingLineIds);
 
-    // Camisetas pedidas que no han llegado: vuelven a estar pendientes de pedir. Todo o nada. Exige una transacción.
-    void returnLinesToPending(Collection<Long> lineIds);
+    // Una camiseta que no llegó con su lote (y volvió a pendientes) llega después por su cuenta.
+    // Debe estar pendiente. Exige una transacción.
+    void markLateArrivalReceived(Long lineId);
 }

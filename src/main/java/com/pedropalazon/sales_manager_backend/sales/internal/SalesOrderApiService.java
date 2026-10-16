@@ -72,18 +72,29 @@ class SalesOrderApiService implements SalesOrderApi {
         changeStatus(lineIds, LineStatus.PENDING, "La línea %d no está pendiente de pedir", SalesOrderLine::markOrdered);
     }
 
+    // Una sola llamada para recibidas y no llegadas: así sus pedidos se bloquean todos juntos y en orden,
+    // y dos recepciones simultáneas no se bloquean mutuamente (deadlock)
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void markLinesReceived(Collection<Long> lineIds) {
-        changeStatus(lineIds, LineStatus.ORDERED, "La línea %d no está pedida al fabricante",
-                SalesOrderLine::markReceived);
+    public void receiveLines(Collection<Long> receivedLineIds, Collection<Long> missingLineIds) {
+        Set<Long> missing = Set.copyOf(missingLineIds);
+        Set<Long> all = new HashSet<>(receivedLineIds);
+        all.addAll(missing);
+        changeStatus(all, LineStatus.ORDERED, "La línea %d no está pedida al fabricante",
+                line -> {
+                    if (missing.contains(line.getId())) {
+                        line.returnToPending();
+                    } else {
+                        line.markReceived();
+                    }
+                });
     }
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void returnLinesToPending(Collection<Long> lineIds) {
-        changeStatus(lineIds, LineStatus.ORDERED, "La línea %d no está pedida al fabricante",
-                SalesOrderLine::returnToPending);
+    public void markLateArrivalReceived(Long lineId) {
+        changeStatus(List.of(lineId), LineStatus.PENDING, "La línea %d no está pendiente: no se puede dar por recibida",
+                SalesOrderLine::markReceived);
     }
 
     // Cambia el estado de varias camisetas de golpe: todas deben estar en el estado esperado y en pedidos
