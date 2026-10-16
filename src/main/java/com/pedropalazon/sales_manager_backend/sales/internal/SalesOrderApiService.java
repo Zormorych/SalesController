@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -68,21 +69,40 @@ class SalesOrderApiService implements SalesOrderApi {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void markLinesOrdered(Collection<Long> lineIds) {
+        changeStatus(lineIds, LineStatus.PENDING, "La línea %d no está pendiente de pedir", SalesOrderLine::markOrdered);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void markLinesReceived(Collection<Long> lineIds) {
+        changeStatus(lineIds, LineStatus.ORDERED, "La línea %d no está pedida al fabricante",
+                SalesOrderLine::markReceived);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void returnLinesToPending(Collection<Long> lineIds) {
+        changeStatus(lineIds, LineStatus.ORDERED, "La línea %d no está pedida al fabricante",
+                SalesOrderLine::returnToPending);
+    }
+
+    // Cambia el estado de varias camisetas de golpe: todas deben estar en el estado esperado y en pedidos
+    // no cancelados; si alguna no lo está, no se cambia ninguna
+    private void changeStatus(Collection<Long> lineIds, LineStatus expected, String notInExpectedStatusMessage,
+            Consumer<SalesOrderLine> change) {
         List<SalesOrderLine> lines = findAllOrFail(lineIds);
         // Bloquea sus pedidos y después recarga su estado (y en cascada el de sus líneas): quien llama puede
         // tener ya estas líneas en memoria, leídas antes de que otra transacción las cancelara
         List<SalesOrder> orders = lines.stream().map(SalesOrderLine::getOrder).distinct().toList();
         salesOrderRepository.lockByIds(orders.stream().map(SalesOrder::getId).toList());
         orders.forEach(entityManager::refresh);
-        // Se comprueban todas antes de cambiar ninguna: o se marcan todas o ninguna
         lines.stream()
-                .filter(line -> !line.isPending() || line.getOrder().isCancelled())
+                .filter(line -> line.getStatus() != expected || line.getOrder().isCancelled())
                 .findFirst()
                 .ifPresent(line -> {
-                    throw new BusinessRuleException(
-                            "La línea %d no está pendiente de pedir".formatted(line.getId()));
+                    throw new BusinessRuleException(notInExpectedStatusMessage.formatted(line.getId()));
                 });
-        lines.forEach(SalesOrderLine::markOrdered);
+        lines.forEach(change);
     }
 
     private List<SalesOrderLine> findAllOrFail(Collection<Long> lineIds) {

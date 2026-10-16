@@ -1,5 +1,6 @@
 package com.pedropalazon.sales_manager_backend.sales.internal;
 
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -97,6 +98,33 @@ public class SalesOrder {
 
     public long activeLineCount() {
         return activeLines().count();
+    }
+
+    public SalesOrderProgress progress() {
+        if (isCancelled()) {
+            return SalesOrderProgress.CANCELLED;
+        }
+        List<LineStatus> statuses = activeLines().map(SalesOrderLine::getStatus).toList();
+        if (statuses.stream().allMatch(status -> status == LineStatus.DELIVERED)) {
+            return SalesOrderProgress.COMPLETED;
+        }
+        if (statuses.stream().allMatch(status -> status == LineStatus.RECEIVED || status == LineStatus.DELIVERED)) {
+            return SalesOrderProgress.READY_TO_DELIVER;
+        }
+        if (statuses.stream().allMatch(status -> status == LineStatus.PENDING)) {
+            return SalesOrderProgress.PENDING;
+        }
+        return SalesOrderProgress.IN_PROGRESS;
+    }
+
+    // Cuántas camisetas faltan por pedir, recibir o entregar
+    public SalesOrderView.LineCounts lineCounts() {
+        return new SalesOrderView.LineCounts(countLines(LineStatus.PENDING), countLines(LineStatus.ORDERED),
+                countLines(LineStatus.RECEIVED), countLines(LineStatus.DELIVERED), countLines(LineStatus.CANCELLED));
+    }
+
+    private long countLines(LineStatus status) {
+        return lines.stream().filter(line -> line.getStatus() == status).count();
     }
 
     public BigDecimal totalSale() {

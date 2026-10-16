@@ -121,6 +121,57 @@ class SalesOrderLinesApiTest {
         assertThat(salesOrderService.get(order.id()).lines().get(0).status()).isEqualTo(LineStatus.PENDING);
     }
 
+    @Test
+    void givenOrderedLines_whenMarkedReceived_thenAreReceivedAndTheOrderCanNoLongerBeCancelled() {
+        SalesOrderView.Details order = createOrder(anaId, LocalDate.of(2026, 10, 10), line("M", null), line("L", null));
+        List<Long> lineIds = order.lines().stream().map(SalesOrderView.Line::id).toList();
+        salesOrderApi.markLinesOrdered(lineIds);
+
+        salesOrderApi.markLinesReceived(lineIds);
+
+        SalesOrderView.Details reloaded = salesOrderService.get(order.id());
+        assertThat(reloaded.lines()).allSatisfy(line -> assertThat(line.status()).isEqualTo(LineStatus.RECEIVED));
+        assertThat(reloaded.progress()).isEqualTo(SalesOrderProgress.READY_TO_DELIVER);
+        assertThatThrownBy(() -> salesOrderService.cancel(order.id()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("ya pedidas al fabricante");
+    }
+
+    @Test
+    void givenLineThatWasNotOrdered_whenMarkedReceived_thenFails() {
+        SalesOrderView.Details order = createOrder(anaId, LocalDate.of(2026, 10, 10), line("M", null));
+        Long lineId = order.lines().get(0).id();
+
+        assertThatThrownBy(() -> salesOrderApi.markLinesReceived(List.of(lineId)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("La línea " + lineId + " no está pedida al fabricante");
+    }
+
+    @Test
+    void givenOrderedLineThatDidNotArrive_whenReturnedToPending_thenIsPendingAndEditableAgain() {
+        SalesOrderView.Details order = createOrder(anaId, LocalDate.of(2026, 10, 10), line("M", null), line("L", null));
+        Long lineId = order.lines().get(0).id();
+        salesOrderApi.markLinesOrdered(List.of(lineId));
+
+        salesOrderApi.returnLinesToPending(List.of(lineId));
+
+        assertThat(salesOrderApi.findPendingLines()).extracting(OrderLineSnapshot::lineId).contains(lineId);
+        salesOrderService.cancelLine(order.id(), lineId);
+        assertThat(salesOrderService.get(order.id()).lines().get(0).status()).isEqualTo(LineStatus.CANCELLED);
+    }
+
+    @Test
+    void givenReceivedLine_whenReturnedToPending_thenFails() {
+        SalesOrderView.Details order = createOrder(anaId, LocalDate.of(2026, 10, 10), line("M", null));
+        Long lineId = order.lines().get(0).id();
+        salesOrderApi.markLinesOrdered(List.of(lineId));
+        salesOrderApi.markLinesReceived(List.of(lineId));
+
+        assertThatThrownBy(() -> salesOrderApi.returnLinesToPending(List.of(lineId)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("La línea " + lineId + " no está pedida al fabricante");
+    }
+
     private SalesOrderView.Details createOrder(Long customerId, LocalDate date, OrderLineDraft... lines) {
         return salesOrderService.create(customerId, date, null, List.of(lines));
     }
