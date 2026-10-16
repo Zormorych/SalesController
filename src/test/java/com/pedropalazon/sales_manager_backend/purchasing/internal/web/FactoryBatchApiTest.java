@@ -290,7 +290,7 @@ class FactoryBatchApiTest {
 
             List<String> texts = cellTexts(content);
             assertThat(texts).filteredOn(text -> text.equals("Equipación: Selección Española blanca")).hasSize(2);
-            assertThat(texts).contains("Personalización: Nombre + número: WILLIAMS JR 17");
+            assertThat(texts).contains("Personalización: Nombre + número \"WILLIAMS JR 17\"");
         }
 
         @Test

@@ -37,10 +37,15 @@ final class FactoryBatchExcel {
     private static final int FIRST_BLOCK_ROW = 2;
     private static final int FRAME_ROWS = 12;
     private static final int DATA_ROWS = 4;
-    // Marco + datos + una fila vacía de separación con la siguiente fila de bloques
-    private static final int BLOCK_HEIGHT = FRAME_ROWS + DATA_ROWS + 1;
+    // Filas vacías entre una fila de bloques y la siguiente, y ancho de las columnas vacías entre bloques:
+    // bastante aire para que cada captura se vea separada de la de al lado
+    private static final int SEPARATION_ROWS = 5;
+    private static final int BLOCK_HEIGHT = FRAME_ROWS + DATA_ROWS + SEPARATION_ROWS;
     private static final int BLOCK_COLUMN_WIDTH = 40 * 256;
-    private static final int SPACER_COLUMN_WIDTH = 3 * 256;
+    private static final int SEPARATION_COLUMN_WIDTH = 15 * 256;
+    // Escala fija para que quepan 3 bloques de ancho en A4 apaisado. "Ajustar a página" no sirve:
+    // Excel ignora entonces los saltos de página manuales que mantienen cada bloque entero
+    private static final short PRINT_SCALE_PERCENT = 85;
     private static final float FRAME_ROW_HEIGHT_POINTS = 20;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -57,6 +62,7 @@ final class FactoryBatchExcel {
             for (int i = 0; i < sorted.size(); i++) {
                 writeBlock(sheet, styles, i, sorted.get(i));
             }
+            addPageBreakAfterEachRowOfBlocks(sheet, sorted.size());
             configureColumnsAndPrinting(sheet);
 
             workbook.write(out);
@@ -106,6 +112,8 @@ final class FactoryBatchExcel {
         writeData(sheet, styles.data, dataRow + 3, column, "Personalización: " + customizationText(line));
     }
 
+    // El texto a estampar va entre comillas y las personalizaciones se separan con ";": un "+" se confundiría
+    // con el de "Nombre + número" y el fabricante podría estampar algo que no es
     private static String customizationText(OrderLineSnapshot line) {
         if (line.customizations().isEmpty()) {
             return "Sin personalizar";
@@ -113,8 +121,16 @@ final class FactoryBatchExcel {
         return line.customizations().stream()
                 .map(customization -> customization.customText() == null
                         ? customization.name()
-                        : customization.name() + ": " + customization.customText())
-                .collect(Collectors.joining(" + "));
+                        : "%s \"%s\"".formatted(customization.name(), customization.customText()))
+                .collect(Collectors.joining("; "));
+    }
+
+    // Cada fila de 3 bloques empieza página: así el marco de la foto nunca queda en una página y sus datos en otra
+    private static void addPageBreakAfterEachRowOfBlocks(Sheet sheet, int shirtCount) {
+        int rowsOfBlocks = (shirtCount + BLOCKS_PER_ROW - 1) / BLOCKS_PER_ROW;
+        for (int blockRow = 0; blockRow < rowsOfBlocks - 1; blockRow++) {
+            sheet.setRowBreak(FIRST_BLOCK_ROW + (blockRow + 1) * BLOCK_HEIGHT - 1);
+        }
     }
 
     private static void writeData(Sheet sheet, CellStyle style, int rowIndex, int column, String text) {
@@ -130,14 +146,12 @@ final class FactoryBatchExcel {
 
     private static void configureColumnsAndPrinting(Sheet sheet) {
         for (int column = 0; column < BLOCKS_PER_ROW * 2 - 1; column++) {
-            sheet.setColumnWidth(column, column % 2 == 0 ? BLOCK_COLUMN_WIDTH : SPACER_COLUMN_WIDTH);
+            sheet.setColumnWidth(column, column % 2 == 0 ? BLOCK_COLUMN_WIDTH : SEPARATION_COLUMN_WIDTH);
         }
         PrintSetup print = sheet.getPrintSetup();
         print.setLandscape(true);
         print.setPaperSize(PrintSetup.A4_PAPERSIZE);
-        sheet.setFitToPage(true);
-        print.setFitWidth((short) 1);
-        print.setFitHeight((short) 0);
+        print.setScale(PRINT_SCALE_PERCENT);
         sheet.setMargin(Sheet.LeftMargin, 0.3);
         sheet.setMargin(Sheet.RightMargin, 0.3);
         sheet.setMargin(Sheet.TopMargin, 0.4);
