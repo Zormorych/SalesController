@@ -185,6 +185,7 @@ Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `s
 2. `feat: deliver received shirts to customers` — `POST /api/sales/orders/{id}/lines/{lineId}/deliver` y `POST /api/sales/orders/{id}/deliver` (todas las recibidas). Entregar una que no ha llegado da 409.
 3. `feat: receive factory batches recording missing shirts` — `POST /api/purchasing/batches/{id}/receive` con `missingLineIds` (vacío = ha llegado todo). Puede faltar alguna sin que el fabricante avise: las que faltan vuelven a pendientes de pedir, salen del lote (no se les asigna envío) y quedan en `missingLines` del lote. Migración `V7`.
    - Test obligatorio: lote de 10 camisetas en el que llegan 9 → 9 `RECEIVED`, 1 vuelve a pendientes, aparece como no llegada en el lote y se puede meter en otro lote.
+   - Si la que faltó llega después por su cuenta (por ejemplo, tras reclamarla): `POST /api/purchasing/batches/{id}/missing-lines/{lineId}/arrived` la devuelve a su lote como recibida y el envío se reparte también con ella. Un lote en el que no ha llegado ninguna camiseta no se puede dar por recibido.
 
 Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no quiere (pasarla a stock o darla por perdida manteniendo su coste). Hoy no se puede cancelar.
 
