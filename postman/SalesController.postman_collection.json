@@ -1460,6 +1460,28 @@
           }
         },
         {
+          "name": "Descargar Excel del lote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// En Postman usa \"Send and Download\" para guardar el fichero .xlsx",
+                  "pm.test('200 con un .xlsx adjunto', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml.sheet');",
+                  "    pm.expect(pm.response.headers.get('Content-Disposition')).to.include('.xlsx');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/purchasing/batches/{{batchId}}/excel"
+          }
+        },
+        {
           "name": "Error - cancelar un lote enviado (409)",
           "event": [
             {
