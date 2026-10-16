@@ -3,6 +3,8 @@ package com.pedropalazon.sales_manager_backend.purchasing.internal.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -267,6 +269,102 @@ class FactoryBatchApiTest {
         private ResultActions addLines(long batchId, List<Long> lineIds) throws Exception {
             return mockMvc.perform(post(BATCHES + "/" + batchId + "/lines").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"lineIds\":%s}".formatted(lineIds)));
+        }
+    }
+
+    // Recepción del lote: puede faltar alguna camiseta sin que el fabricante avise
+    @Nested
+    class Reception {
+
+        @Test
+        void givenBatchOfTenShirts_whenOnlyNineArrive_thenNineAreReceivedAndTheMissingOneIsPendingAgain()
+                throws Exception {
+            String order = createOrder(10);
+            List<Long> lines = lineIdsOf(order);
+            long missing = lines.get(9);
+            long batchId = sentBatch(lines, "4.00");
+
+            receive(batchId, "{\"missingLineIds\":[" + missing + "]}")
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("RECEIVED"))
+                    .andExpect(jsonPath("$.receivedAt").isNotEmpty())
+                    .andExpect(jsonPath("$.lines.length()").value(9))
+                    .andExpect(jsonPath("$.lines[*].status").value(everyItem(is("RECEIVED"))))
+                    .andExpect(jsonPath("$.missingLines.length()").value(1))
+                    .andExpect(jsonPath("$.missingLines[0].lineId").value(missing))
+                    .andExpect(jsonPath("$.missingLines[0].status").value("PENDING"))
+                    .andExpect(jsonPath("$.totals.activeLines").value(9))
+                    .andExpect(jsonPath("$.totals.shipping").value(4.0));
+
+            mockMvc.perform(get("/api/sales/orders/" + idOf(order)))
+                    .andExpect(jsonPath("$.progress").value("IN_PROGRESS"))
+                    .andExpect(jsonPath("$.lineCounts.received").value(9))
+                    .andExpect(jsonPath("$.lineCounts.pending").value(1));
+            mockMvc.perform(get(PENDING))
+                    .andExpect(jsonPath("$[*].lineId").value(contains((int) missing)));
+            createBatch(List.of(missing), "4.00").andExpect(status().isCreated());
+        }
+
+        @Test
+        void givenSentBatch_whenEverythingArrives_thenAllShirtsAreReceivedAndNothingIsMissing() throws Exception {
+            long batchId = sentBatch(createOrderWithLines(3), "4.00");
+
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/receive"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("RECEIVED"))
+                    .andExpect(jsonPath("$.lines[*].status").value(contains("RECEIVED", "RECEIVED", "RECEIVED")))
+                    .andExpect(jsonPath("$.missingLines.length()").value(0));
+        }
+
+        @Test
+        void givenShirtThatDidNotArrive_whenEditingItInItsOrder_thenIsAllowedAndGetsNoShipping() throws Exception {
+            String order = createOrder(2);
+            List<Long> lines = lineIdsOf(order);
+            long batchId = sentBatch(lines, "4.00");
+
+            receive(batchId, "{\"missingLineIds\":[" + lines.get(1) + "]}")
+                    .andExpect(jsonPath("$.lines[*].shippingShare").value(contains(4.0)));
+            mockMvc.perform(put("/api/sales/orders/" + idOf(order) + "/lines/" + lines.get(1))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"productId\":%d,\"kitName\":\"Selección Española roja\",\"size\":\"L\"}"
+                                    .formatted(productId)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        void givenBatchNotSentOrAlreadyReceived_whenReceiving_thenReturnsConflict() throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long openBatch = idOf(createBatch(lines.subList(0, 1), "4.00").andReturn().getResponse().getContentAsString());
+            receive(openBatch, "{}")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("todavía no se ha enviado")));
+
+            long sentBatch = sentBatch(lines.subList(1, 2), "4.00");
+            receive(sentBatch, "{}").andExpect(status().isOk());
+            receive(sentBatch, "{}")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("ya se ha recibido")));
+        }
+
+        @Test
+        void givenShirtThatIsNotInTheBatch_whenMarkedMissing_thenReturnsNotFound() throws Exception {
+            List<Long> lines = createOrderWithLines(2);
+            long batchId = sentBatch(lines.subList(0, 1), "4.00");
+
+            receive(batchId, "{\"missingLineIds\":[" + lines.get(1) + "]}")
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.detail").value(containsString("no está en el lote")));
+        }
+
+        private long sentBatch(List<Long> lineIds, String shippingCost) throws Exception {
+            long batchId = idOf(createBatch(lineIds, shippingCost).andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/send")).andExpect(status().isOk());
+            return batchId;
+        }
+
+        private ResultActions receive(long batchId, String json) throws Exception {
+            return mockMvc.perform(post(BATCHES + "/" + batchId + "/receive")
+                    .contentType(MediaType.APPLICATION_JSON).content(json));
         }
     }
 

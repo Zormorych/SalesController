@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
@@ -112,6 +113,41 @@ public class FactoryBatchService {
         return detailsOf(batch);
     }
 
+    // Llega el pedido del fabricante. Puede faltar alguna camiseta sin que avise: esas vuelven a estar
+    // pendientes de pedir (para reclamarlas o meterlas en el siguiente lote) y el lote recuerda que faltaron
+    @Transactional
+    public FactoryBatchView.Details receive(Long id, Collection<Long> missingLineIds) {
+        FactoryBatch batch = lock(id);
+        if (batch.getStatus() == FactoryBatchStatus.OPEN) {
+            throw new BusinessRuleException("El lote %s todavía no se ha enviado".formatted(batch.getBatchNumber()));
+        }
+        if (batch.getStatus() == FactoryBatchStatus.RECEIVED) {
+            throw new BusinessRuleException("El lote %s ya se ha recibido".formatted(batch.getBatchNumber()));
+        }
+        if (batch.getStatus() == FactoryBatchStatus.CANCELLED) {
+            throw new BusinessRuleException("El lote %s está cancelado".formatted(batch.getBatchNumber()));
+        }
+        Set<Long> missing = Set.copyOf(missingLineIds);
+        missing.stream()
+                .filter(lineId -> !batch.getLineIds().contains(lineId))
+                .findFirst()
+                .ifPresent(lineId -> {
+                    throw new ResourceNotFoundException("La línea %d no está en el lote %s"
+                            .formatted(lineId, batch.getBatchNumber()));
+                });
+        Set<Long> received = new HashSet<>(batch.getLineIds());
+        received.removeAll(missing);
+
+        if (!received.isEmpty()) {
+            salesOrderApi.markLinesReceived(received);
+        }
+        if (!missing.isEmpty()) {
+            salesOrderApi.returnLinesToPending(missing);
+        }
+        batch.markReceived(missing, LocalDateTime.now());
+        return detailsOf(batch);
+    }
+
     // Se puede generar con el lote abierto (para revisarlo antes de enviarlo) o ya enviado.
     // Las camisetas canceladas no se piden, así que no salen.
     @Transactional(readOnly = true)
@@ -134,16 +170,23 @@ public class FactoryBatchService {
 
     // Bloquea el lote hasta el commit: así nadie añade camisetas a un lote que se está enviando
     private FactoryBatch findOpen(Long id) {
-        FactoryBatch batch = repository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("No existe el lote con id %d".formatted(id)));
-        if (batch.getStatus() == FactoryBatchStatus.SENT) {
-            throw new BusinessRuleException(
+        FactoryBatch batch = lock(id);
+        switch (batch.getStatus()) {
+            case SENT -> throw new BusinessRuleException(
                     "El lote %s ya se ha enviado y no se puede modificar".formatted(batch.getBatchNumber()));
+            case RECEIVED -> throw new BusinessRuleException(
+                    "El lote %s ya se ha recibido y no se puede modificar".formatted(batch.getBatchNumber()));
+            case CANCELLED -> throw new BusinessRuleException(
+                    "El lote %s está cancelado".formatted(batch.getBatchNumber()));
+            default -> {
+                return batch;
+            }
         }
-        if (batch.getStatus() == FactoryBatchStatus.CANCELLED) {
-            throw new BusinessRuleException("El lote %s está cancelado".formatted(batch.getBatchNumber()));
-        }
-        return batch;
+    }
+
+    private FactoryBatch lock(Long id) {
+        return repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el lote con id %d".formatted(id)));
     }
 
     FactoryBatch find(Long id) {
@@ -165,9 +208,11 @@ public class FactoryBatchService {
     }
 
     FactoryBatchView.Details detailsOf(FactoryBatch batch) {
-        List<OrderLineSnapshot> lines = batch.getLineIds().isEmpty()
-                ? List.of()
-                : salesOrderApi.getLines(batch.getLineIds());
-        return FactoryBatchView.details(batch, lines);
+        Set<Long> all = new HashSet<>(batch.getLineIds());
+        all.addAll(batch.getMissingLineIds());
+        List<OrderLineSnapshot> lines = all.isEmpty() ? List.of() : salesOrderApi.getLines(all);
+        return FactoryBatchView.details(batch,
+                lines.stream().filter(line -> batch.getLineIds().contains(line.lineId())).toList(),
+                lines.stream().filter(line -> batch.getMissingLineIds().contains(line.lineId())).toList());
     }
 }

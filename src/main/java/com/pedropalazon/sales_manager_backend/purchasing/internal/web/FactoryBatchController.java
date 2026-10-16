@@ -91,6 +91,12 @@ class FactoryBatchController {
         return service.send(id);
     }
 
+    @PostMapping("/batches/{id}/receive")
+    FactoryBatchView.Details receive(@PathVariable Long id,
+            @Valid @RequestBody(required = false) ReceiveFactoryBatchRequest request) {
+        return service.receive(id, request == null ? List.of() : request.missingOrEmpty());
+    }
+
     @PostMapping("/batches/{id}/cancel")
     FactoryBatchView.Details cancel(@PathVariable Long id) {
         return service.cancel(id);

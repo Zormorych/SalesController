@@ -45,6 +45,8 @@ public class FactoryBatch {
 
     private LocalDateTime sentAt;
 
+    private LocalDateTime receivedAt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -55,6 +57,12 @@ public class FactoryBatch {
     @CollectionTable(name = "factory_batch_lines", joinColumns = @JoinColumn(name = "factory_batch_id"))
     @Column(name = "sales_order_line_id", nullable = false)
     private Set<Long> lineIds = new LinkedHashSet<>();
+
+    // Camisetas que se pidieron en este lote pero no llegaron (ya no forman parte de él)
+    @ElementCollection
+    @CollectionTable(name = "factory_batch_missing_lines", joinColumns = @JoinColumn(name = "factory_batch_id"))
+    @Column(name = "sales_order_line_id", nullable = false)
+    private Set<Long> missingLineIds = new LinkedHashSet<>();
 
     protected FactoryBatch() {
     }
@@ -84,6 +92,14 @@ public class FactoryBatch {
     public void markSent(LocalDateTime when) {
         this.status = FactoryBatchStatus.SENT;
         this.sentAt = when;
+    }
+
+    // Las que no llegaron salen del lote (quedan libres para pedirlas en otro) y se apuntan como no llegadas
+    public void markReceived(Collection<Long> missing, LocalDateTime when) {
+        lineIds.removeAll(missing);
+        missingLineIds.addAll(missing);
+        this.status = FactoryBatchStatus.RECEIVED;
+        this.receivedAt = when;
     }
 
     // Un lote descartado deja libres sus camisetas para poder pedirlas en otro
@@ -118,6 +134,14 @@ public class FactoryBatch {
 
     public LocalDateTime getSentAt() {
         return sentAt;
+    }
+
+    public LocalDateTime getReceivedAt() {
+        return receivedAt;
+    }
+
+    public Set<Long> getMissingLineIds() {
+        return Set.copyOf(missingLineIds);
     }
 
     public LocalDateTime getCreatedAt() {
