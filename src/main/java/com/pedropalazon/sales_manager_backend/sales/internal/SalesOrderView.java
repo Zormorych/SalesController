@@ -14,8 +14,9 @@ public final class SalesOrderView {
     private SalesOrderView() {
     }
 
-    public record Details(Long id, String orderNumber, LocalDate orderDate, SalesOrderStatus status, String notes,
-            CustomerSummary customer, List<Line> lines, Totals totals) {
+    public record Details(Long id, String orderNumber, LocalDate orderDate, SalesOrderStatus status,
+            SalesOrderProgress progress, String notes, CustomerSummary customer, List<Line> lines, Totals totals,
+            LineCounts lineCounts) {
     }
 
     public record Line(Long id, Long productId, String productName, String kitName, ClothingSize size,
@@ -30,20 +31,26 @@ public final class SalesOrderView {
     public record Totals(BigDecimal sale, BigDecimal cost, BigDecimal profit, long activeLines) {
     }
 
-    public record Summary(Long id, String orderNumber, LocalDate orderDate, SalesOrderStatus status, Long customerId,
-            String customerName, long activeLines, BigDecimal totalSale, BigDecimal totalProfit) {
+    public record Summary(Long id, String orderNumber, LocalDate orderDate, SalesOrderStatus status,
+            SalesOrderProgress progress, Long customerId, String customerName, long activeLines, BigDecimal totalSale,
+            BigDecimal totalProfit, LineCounts lineCounts) {
+    }
+
+    // Camisetas del pedido en cada estado: lo que falta por pedir, recibir o entregar
+    public record LineCounts(long pending, long ordered, long received, long delivered, long cancelled) {
     }
 
     static Details details(SalesOrder order, CustomerSummary customer) {
         List<Line> lines = order.getLines().stream().map(SalesOrderView::line).toList();
         Totals totals = new Totals(order.totalSale(), order.totalCost(), order.totalProfit(), order.activeLineCount());
         return new Details(order.getId(), order.getOrderNumber(), order.getOrderDate(), order.getStatus(),
-                order.getNotes(), customer, lines, totals);
+                order.progress(), order.getNotes(), customer, lines, totals, order.lineCounts());
     }
 
     static Summary summary(SalesOrder order, String customerName) {
         return new Summary(order.getId(), order.getOrderNumber(), order.getOrderDate(), order.getStatus(),
-                order.getCustomerId(), customerName, order.activeLineCount(), order.totalSale(), order.totalProfit());
+                order.progress(), order.getCustomerId(), customerName, order.activeLineCount(), order.totalSale(),
+                order.totalProfit(), order.lineCounts());
     }
 
     private static Line line(SalesOrderLine line) {

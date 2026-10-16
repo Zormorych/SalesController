@@ -73,6 +73,16 @@ class SalesOrderController {
         return service.updateLine(id, lineId, request.toDraft());
     }
 
+    @PostMapping("/{id}/deliver")
+    SalesOrderView.Details deliverAll(@PathVariable Long id) {
+        return service.deliverAll(id);
+    }
+
+    @PostMapping("/{id}/lines/{lineId}/deliver")
+    SalesOrderView.Details deliverLine(@PathVariable Long id, @PathVariable Long lineId) {
+        return service.deliverLine(id, lineId);
+    }
+
     @PostMapping("/{id}/lines/{lineId}/cancel")
     SalesOrderView.Details cancelLine(@PathVariable Long id, @PathVariable Long lineId) {
         return service.cancelLine(id, lineId);
