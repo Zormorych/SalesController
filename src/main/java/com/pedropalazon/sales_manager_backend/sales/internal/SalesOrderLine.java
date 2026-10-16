@@ -1,6 +1,7 @@
 package com.pedropalazon.sales_manager_backend.sales.internal;
 
 import com.pedropalazon.sales_manager_backend.catalog.ClothingSize;
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -83,6 +84,14 @@ public class SalesOrderLine {
 
     public void cancel() {
         this.status = LineStatus.CANCELLED;
+    }
+
+    public void markOrdered() {
+        this.status = LineStatus.ORDERED;
+    }
+
+    SalesOrder getOrder() {
+        return order;
     }
 
     public boolean isCancelled() {

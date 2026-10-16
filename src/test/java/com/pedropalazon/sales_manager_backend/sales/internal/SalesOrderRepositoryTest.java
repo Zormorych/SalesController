@@ -3,6 +3,7 @@ package com.pedropalazon.sales_manager_backend.sales.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pedropalazon.sales_manager_backend.catalog.ClothingSize;
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
