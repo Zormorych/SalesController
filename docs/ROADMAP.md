@@ -174,7 +174,7 @@ Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `s
 
 ### Paso 6 — Excel del fabricante · rama `feature/factory-excel`
 
-1. `feat: generate the factory batch excel` — Apache POI. Un bloque por camiseta, 3 por fila: **arriba un marco blanco** de 12 filas ("Pega aquí la foto") y **justo debajo** equipación, tipo de producto, talla y personalización ("Nombre + número: WILLIAMS JR 17 + Parche" o "Sin personalizar"). Camisetas iguales juntas (por equipación, tipo y talla). Apaisado y ajustado a una página de ancho.
+1. `feat: generate the factory batch excel` — Apache POI. Un bloque por camiseta, 3 por fila: **arriba un marco blanco** de 12 filas ("Pega aquí la foto") y **justo debajo** equipación, tipo de producto, talla y personalización (`Nombre + número "WILLIAMS JR 17"; Parche` o "Sin personalizar"). Mucho espacio entre camisetas (columnas de 15 caracteres y 5 filas entre filas de bloques). Camisetas iguales juntas (por equipación, tipo y talla). Apaisado al 85 %, con un salto de página por cada fila de 3 bloques para que ningún marco se separe de sus datos.
    El Excel **no lleva precios, costes, clientes ni cálculos**. Eso va en los informes (Paso 8).
 2. `feat: add excel download endpoint for factory batches` — `GET /api/purchasing/batches/{id}/excel` descarga `FB-….xlsx`. Con el lote abierto o enviado; sin las camisetas canceladas; un lote descartado da 409.
 
