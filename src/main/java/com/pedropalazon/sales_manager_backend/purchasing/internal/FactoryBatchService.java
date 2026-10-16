@@ -112,6 +112,26 @@ public class FactoryBatchService {
         return detailsOf(batch);
     }
 
+    // Se puede generar con el lote abierto (para revisarlo antes de enviarlo) o ya enviado.
+    // Las camisetas canceladas no se piden, así que no salen.
+    @Transactional(readOnly = true)
+    public ExcelFile excel(Long id) {
+        FactoryBatch batch = find(id);
+        if (batch.getStatus() == FactoryBatchStatus.CANCELLED) {
+            throw new BusinessRuleException("El lote %s está cancelado".formatted(batch.getBatchNumber()));
+        }
+        List<OrderLineSnapshot> shirts = batch.getLineIds().isEmpty()
+                ? List.of()
+                : salesOrderApi.getLines(batch.getLineIds()).stream()
+                        .filter(line -> line.status() != LineStatus.CANCELLED)
+                        .toList();
+        if (shirts.isEmpty()) {
+            throw new BusinessRuleException("El lote %s no tiene camisetas".formatted(batch.getBatchNumber()));
+        }
+        byte[] content = FactoryBatchExcel.generate(batch.getBatchNumber(), LocalDate.now(), shirts);
+        return new ExcelFile(batch.getBatchNumber() + ".xlsx", content);
+    }
+
     // Bloquea el lote hasta el commit: así nadie añade camisetas a un lote que se está enviando
     private FactoryBatch findOpen(Long id) {
         FactoryBatch batch = repository.findByIdForUpdate(id)
