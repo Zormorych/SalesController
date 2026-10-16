@@ -1,5 +1,6 @@
 package com.pedropalazon.sales_manager_backend.purchasing.internal.web;
 
+import com.pedropalazon.sales_manager_backend.purchasing.internal.ExcelFile;
 import com.pedropalazon.sales_manager_backend.purchasing.internal.FactoryBatchService;
 import com.pedropalazon.sales_manager_backend.purchasing.internal.FactoryBatchView;
 import com.pedropalazon.sales_manager_backend.sales.OrderLineSnapshot;
@@ -7,6 +8,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +26,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @Tag(name = "Compras - Lotes al fabricante",
         description = "Camisetas pendientes de pedir y lotes que se envían al fabricante, con su coste de envío")
 class FactoryBatchController {
+
+    private static final MediaType XLSX =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
     private final FactoryBatchService service;
 
@@ -42,6 +49,16 @@ class FactoryBatchController {
     @GetMapping("/batches/{id}")
     FactoryBatchView.Details get(@PathVariable Long id) {
         return service.get(id);
+    }
+
+    @GetMapping("/batches/{id}/excel")
+    ResponseEntity<byte[]> excel(@PathVariable Long id) {
+        ExcelFile excel = service.excel(id);
+        return ResponseEntity.ok()
+                .contentType(XLSX)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(excel.fileName()).build().toString())
+                .body(excel.content());
     }
 
     @PostMapping("/batches")

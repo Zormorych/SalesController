@@ -1,16 +1,25 @@
 package com.pedropalazon.sales_manager_backend.purchasing.internal.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -258,6 +267,76 @@ class FactoryBatchApiTest {
         private ResultActions addLines(long batchId, List<Long> lineIds) throws Exception {
             return mockMvc.perform(post(BATCHES + "/" + batchId + "/lines").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"lineIds\":%s}".formatted(lineIds)));
+        }
+    }
+
+    // Descarga del Excel para el fabricante
+    @Nested
+    class Excel {
+
+        @Test
+        void givenBatch_whenDownloadingExcel_thenReturnsXlsxAttachmentWithItsShirts() throws Exception {
+            long batchId = idOf(createBatch(createOrderWithLines(2), "4.00").andReturn().getResponse().getContentAsString());
+            String batchNumber = JsonPath.read(mockMvc.perform(get(BATCHES + "/" + batchId))
+                    .andReturn().getResponse().getContentAsString(), "$.batchNumber");
+
+            byte[] content = mockMvc.perform(get(BATCHES + "/" + batchId + "/excel"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Type",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .andExpect(header().string("Content-Disposition",
+                            containsString("attachment; filename=\"" + batchNumber + ".xlsx\"")))
+                    .andReturn().getResponse().getContentAsByteArray();
+
+            List<String> texts = cellTexts(content);
+            assertThat(texts).filteredOn(text -> text.equals("Equipación: Selección Española blanca")).hasSize(2);
+            assertThat(texts).contains("Personalización: Nombre + número: WILLIAMS JR 17");
+        }
+
+        @Test
+        void givenCancelledShirtInsideBatch_whenDownloadingExcel_thenItIsLeftOut() throws Exception {
+            String order = createOrder(3);
+            List<Long> lines = lineIdsOf(order);
+            long batchId = idOf(createBatch(lines, "4.00").andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post("/api/sales/orders/" + idOf(order) + "/lines/" + lines.get(2) + "/cancel"))
+                    .andExpect(status().isOk());
+
+            byte[] content = mockMvc.perform(get(BATCHES + "/" + batchId + "/excel"))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsByteArray();
+
+            assertThat(cellTexts(content)).filteredOn(text -> text.startsWith("Equipación: ")).hasSize(2);
+            assertThat(cellTexts(content).get(0)).contains("2 camisetas");
+        }
+
+        @Test
+        void givenDiscardedBatch_whenDownloadingExcel_thenReturnsConflict() throws Exception {
+            long batchId = idOf(createBatch(createOrderWithLines(1), "4.00").andReturn().getResponse().getContentAsString());
+            mockMvc.perform(post(BATCHES + "/" + batchId + "/cancel")).andExpect(status().isOk());
+
+            mockMvc.perform(get(BATCHES + "/" + batchId + "/excel"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(containsString("está cancelado")));
+        }
+
+        @Test
+        void givenUnknownBatch_whenDownloadingExcel_thenReturnsNotFound() throws Exception {
+            mockMvc.perform(get(BATCHES + "/999999/excel"))
+                    .andExpect(status().isNotFound());
+        }
+
+        private List<String> cellTexts(byte[] content) throws Exception {
+            List<String> texts = new ArrayList<>();
+            try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(content))) {
+                for (Row row : workbook.getSheetAt(0)) {
+                    for (Cell cell : row) {
+                        if (cell.getCellType() == CellType.STRING) {
+                            texts.add(cell.getStringCellValue());
+                        }
+                    }
+                }
+            }
+            return texts;
         }
     }
 
