@@ -4,6 +4,7 @@ import com.pedropalazon.sales_manager_backend.catalog.CatalogApi;
 import com.pedropalazon.sales_manager_backend.catalog.CatalogItemSnapshot;
 import com.pedropalazon.sales_manager_backend.customers.CustomerApi;
 import com.pedropalazon.sales_manager_backend.customers.CustomerSummary;
+import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import java.math.BigDecimal;
@@ -122,10 +123,43 @@ public class SalesOrderService {
         return order;
     }
 
-    private static SalesOrderLine findPendingLine(SalesOrder order, Long lineId) {
-        SalesOrderLine line = order.findLine(lineId)
+    // Entrega al cliente una camiseta que ya ha llegado del fabricante
+    @Transactional
+    public SalesOrderView.Details deliverLine(Long id, Long lineId) {
+        SalesOrder order = findOpen(id);
+        SalesOrderLine line = findLine(order, lineId);
+        if (line.getStatus() == LineStatus.DELIVERED) {
+            throw new BusinessRuleException("La línea %d ya está entregada".formatted(lineId));
+        }
+        if (line.getStatus() != LineStatus.RECEIVED) {
+            throw new BusinessRuleException("La línea %d todavía no se ha recibido".formatted(lineId));
+        }
+        line.markDelivered();
+        return detailsOf(order);
+    }
+
+    // Entrega de golpe todas las camisetas recibidas del pedido (las que aún no han llegado se quedan como están)
+    @Transactional
+    public SalesOrderView.Details deliverAll(Long id) {
+        SalesOrder order = findOpen(id);
+        List<SalesOrderLine> received = order.getLines().stream()
+                .filter(line -> line.getStatus() == LineStatus.RECEIVED)
+                .toList();
+        if (received.isEmpty()) {
+            throw new BusinessRuleException("El pedido no tiene camisetas recibidas pendientes de entregar");
+        }
+        received.forEach(SalesOrderLine::markDelivered);
+        return detailsOf(order);
+    }
+
+    private static SalesOrderLine findLine(SalesOrder order, Long lineId) {
+        return order.findLine(lineId)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe la línea %d en el pedido %s"
                         .formatted(lineId, order.getOrderNumber())));
+    }
+
+    private static SalesOrderLine findPendingLine(SalesOrder order, Long lineId) {
+        SalesOrderLine line = findLine(order, lineId);
         if (!line.isPending()) {
             throw new BusinessRuleException("La línea %d ya no está pendiente y no se puede modificar"
                     .formatted(lineId));
