@@ -1,6 +1,7 @@
 package com.pedropalazon.sales_manager_backend.resale.internal.web;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -54,6 +55,9 @@ class ResaleFromOrderLineApiTest {
     private FactoryBatchService batchService;
 
     private SalesOrderView.Details order;
+    private Long player;
+    private Long nameAndNumber;
+    private Long customerId;
     private Long personalizedLine;
     private Long patchLine;
     private Long notReceivedLine;
@@ -62,11 +66,11 @@ class ResaleFromOrderLineApiTest {
     // La primera: Player 17,00 / 7,70 + "Nombre + número" 2,00 / 1,20 con "WILLIAMS JR 17"
     @BeforeEach
     void createReceivedShirts() {
-        Long player = productService.create("Camiseta Player", new BigDecimal("17.00"), new BigDecimal("7.70")).getId();
-        Long nameAndNumber = customizationService.create("Nombre + número", new BigDecimal("2.00"),
+        player = productService.create("Camiseta Player", new BigDecimal("17.00"), new BigDecimal("7.70")).getId();
+        nameAndNumber = customizationService.create("Nombre + número", new BigDecimal("2.00"),
                 new BigDecimal("1.20")).getId();
         Long patch = customizationService.create("Parche", new BigDecimal("1.00"), new BigDecimal("0.50")).getId();
-        Long customerId = customerService.create("Ana Pérez", null, null).getId();
+        customerId = customerService.create("Ana Pérez", null, null).getId();
         OrderLineDraft personalized = new OrderLineDraft(player, "Selección Española blanca", ClothingSize.M, null, null,
                 List.of(new OrderLineDraft.Customization(nameAndNumber, "WILLIAMS JR 17", null, null)));
         OrderLineDraft withPatch = new OrderLineDraft(player, "Real Madrid local", ClothingSize.L, null, null,
@@ -153,6 +157,22 @@ class ResaleFromOrderLineApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Camiseta Player · Real Madrid local · Parche"))
                 .andExpect(jsonPath("$.size").value("L"));
+    }
+
+    // Producto, equipación y personalizaciones pueden sumar más de lo que cabe en el nombre de la prenda: se recorta
+    @Test
+    void givenVeryLongKitName_whenMovedToStock_thenNameIsCutToFitAndItemIsCreated() throws Exception {
+        OrderLineDraft longKit = new OrderLineDraft(player, "K".repeat(160), ClothingSize.M, null, null,
+                List.of(new OrderLineDraft.Customization(nameAndNumber, "VINICIUS JR 7", null, null)));
+        Long lineId = salesOrderService.create(customerId, LocalDate.of(2026, 10, 6), null, List.of(longKit))
+                .lines().get(0).id();
+        Long batchId = batchService.create(List.of(lineId), new BigDecimal("4.00"), null).id();
+        batchService.send(batchId);
+        batchService.receive(batchId, List.of());
+
+        moveToStock("{\"lineId\":%d}".formatted(lineId))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(hasLength(160)));
     }
 
     private ResultActions moveToStock(String json) throws Exception {

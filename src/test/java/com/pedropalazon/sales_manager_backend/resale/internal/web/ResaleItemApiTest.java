@@ -113,6 +113,17 @@ class ResaleItemApiTest {
     }
 
     @Test
+    void givenUpdateWithoutPurchaseDate_whenUpdating_thenKeepsTheOriginalDate() throws Exception {
+        long id = createItem(VINTED_JACKET);
+
+        mockMvc.perform(put("/api/resale/items/{id}", id).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Chaqueta Nike vintage\",\"purchaseCost\":11.70,\"askingPrice\":18}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.purchaseDate").value("2026-10-02"))
+                .andExpect(jsonPath("$.askingPrice").value(18.00));
+    }
+
+    @Test
     void givenBlankNameOrNegativeCost_whenCreating_thenBadRequestOnField() throws Exception {
         mockMvc.perform(postJson("/api/resale/items", "{\"name\":\" \",\"purchaseCost\":5}"))
                 .andExpect(status().isBadRequest())

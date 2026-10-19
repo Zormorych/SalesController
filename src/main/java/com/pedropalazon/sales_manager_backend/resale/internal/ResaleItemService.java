@@ -84,17 +84,20 @@ public class ResaleItemService {
         return ResaleItemView.of(repository.save(item));
     }
 
-    // "Camiseta Player · Selección Española blanca · WILLIAMS JR 17"; una personalización sin texto va por su nombre
+    // "Camiseta Player · Selección Española blanca · WILLIAMS JR 17"; una personalización sin texto va por su nombre.
+    // Si no cabe, se recorta (luego se puede editar)
     private static String nameOf(OrderLineSnapshot line) {
         String name = line.productName() + " · " + line.kitName();
-        if (line.customizations().isEmpty()) {
-            return name;
+        if (!line.customizations().isEmpty()) {
+            name += " · " + line.customizations().stream()
+                    .map(customization -> customization.customText() == null || customization.customText().isBlank()
+                            ? customization.name()
+                            : customization.customText())
+                    .collect(Collectors.joining(", "));
         }
-        return name + " · " + line.customizations().stream()
-                .map(customization -> customization.customText() == null || customization.customText().isBlank()
-                        ? customization.name()
-                        : customization.customText())
-                .collect(Collectors.joining(", "));
+        return name.length() <= ResaleItem.NAME_MAX_LENGTH
+                ? name
+                : name.substring(0, ResaleItem.NAME_MAX_LENGTH - 1) + "…";
     }
 
     private ResaleItem find(Long id) {

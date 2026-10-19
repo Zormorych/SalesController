@@ -20,6 +20,8 @@ import java.time.LocalDateTime;
 @Table(name = "resale_items")
 public class ResaleItem {
 
+    static final int NAME_MAX_LENGTH = 160;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -86,7 +88,12 @@ public class ResaleItem {
         this.size = blankToNull(draft.size());
         this.notes = blankToNull(draft.notes());
         this.purchaseCost = money(draft.purchaseCost());
-        this.purchaseDate = draft.purchaseDate() == null ? LocalDate.now() : draft.purchaseDate();
+        // Sin fecha: hoy al darla de alta; al editarla se conserva la que tenía
+        if (draft.purchaseDate() != null) {
+            this.purchaseDate = draft.purchaseDate();
+        } else if (this.purchaseDate == null) {
+            this.purchaseDate = LocalDate.now();
+        }
         this.askingPrice = draft.askingPrice() == null ? null : money(draft.askingPrice());
     }
 
