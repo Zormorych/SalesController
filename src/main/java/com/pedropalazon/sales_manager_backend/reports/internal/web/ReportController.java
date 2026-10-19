@@ -30,15 +30,15 @@ class ReportController {
         this.service = service;
     }
 
+    // Sin fechas: el mes actual. Con una sola: la otra se completa con el mismo mes de la que viene
     @GetMapping("/summary")
     SalesSummary summary(
-            @Parameter(description = "Primer día (incluido). Por defecto, el día 1 del mes actual")
+            @Parameter(description = "Primer día (incluido). Por defecto, el día 1 del mes de `to` (o del mes actual)")
             @RequestParam(required = false) LocalDate from,
-            @Parameter(description = "Último día (incluido). Por defecto, el último día del mes actual")
+            @Parameter(description = "Último día (incluido). Por defecto, el último día del mes de `from` (o del mes actual)")
             @RequestParam(required = false) LocalDate to) {
-        YearMonth currentMonth = YearMonth.now();
-        LocalDate start = from == null ? currentMonth.atDay(1) : from;
-        LocalDate end = to == null ? currentMonth.atEndOfMonth() : to;
+        LocalDate start = from != null ? from : (to != null ? YearMonth.from(to) : YearMonth.now()).atDay(1);
+        LocalDate end = to != null ? to : YearMonth.from(start).atEndOfMonth();
         if (start.isAfter(end)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha de inicio (%s) es posterior a la de fin (%s)."
                     .formatted(start.format(SPANISH_DATE), end.format(SPANISH_DATE)));

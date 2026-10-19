@@ -194,7 +194,7 @@ Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no
 1. `feat: expose sales data for reports` — `SalesOrderApi` gana `findActiveLinesOrderedBetween`, `countActiveLinesByStatus` y `findAllOrders`.
 2. `feat: expose payment and batch figures for reports` — nuevas `PaymentApi` (cobrado por pedido y cobrado entre fechas) y `PurchasingApi` (envío de cada camiseta y totales por lote). `FactoryBatchStatus` pasa a la API pública de `purchasing`.
 3. `feat: add sales, batch and pending work reports` — módulo `reports` con tres endpoints de solo lectura:
-   - `GET /api/reports/summary?from&to` — pedidos, camisetas, venta, coste, envío, beneficio y cobrado del periodo (por defecto, el mes actual; `from` posterior a `to` da 400).
+   - `GET /api/reports/summary?from&to` — pedidos, camisetas, venta, coste, envío, beneficio y cobrado del periodo (sin fechas, el mes actual; con una sola, la otra se completa con su mismo mes; `from` posterior a `to` da 400).
      - Cuentan las camisetas no canceladas de pedidos no cancelados cuya **fecha de pedido** está en el periodo.
      - El envío es el que les toca en su lote (mismo reparto por céntimos que el detalle del lote); 0 si aún no están en ninguno.
      - Beneficio = venta − coste − envío.

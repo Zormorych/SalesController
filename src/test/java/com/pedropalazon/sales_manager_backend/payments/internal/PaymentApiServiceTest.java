@@ -68,6 +68,9 @@ class PaymentApiServiceTest {
     void givenPayments_whenSummingByPaymentDate_thenOnlyThoseInRangeCount() {
         assertThat(paymentApi.collectedBetween(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31)))
                 .isEqualTo(new BigDecimal("10.00"));
+        // Las dos fechas del rango están incluidas
+        assertThat(paymentApi.collectedBetween(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 1)))
+                .isEqualTo(new BigDecimal("10.00"));
         assertThat(paymentApi.collectedBetween(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 31)))
                 .isEqualTo(new BigDecimal("0.00"));
     }

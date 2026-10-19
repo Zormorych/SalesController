@@ -118,6 +118,21 @@ class ReportApiTest {
     }
 
     @Test
+    void givenOnlyOneDate_whenGettingSummary_thenTheOtherIsTakenFromThatSameMonth() throws Exception {
+        mockMvc.perform(get("/api/reports/summary").param("to", "2026-09-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value("2026-09-01"))
+                .andExpect(jsonPath("$.to").value("2026-09-30"))
+                .andExpect(jsonPath("$.shirts").value(1));
+
+        mockMvc.perform(get("/api/reports/summary").param("from", "2026-10-15"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value("2026-10-15"))
+                .andExpect(jsonPath("$.to").value("2026-10-31"))
+                .andExpect(jsonPath("$.shirts").value(1));
+    }
+
+    @Test
     void givenInvertedRange_whenGettingSummary_thenReturnsBadRequestInSpanish() throws Exception {
         mockMvc.perform(get("/api/reports/summary").param("from", "2026-10-31").param("to", "2026-10-01"))
                 .andExpect(status().isBadRequest())
