@@ -29,7 +29,8 @@ Objetivos:
 | `sales` | Pedidos de cliente, líneas, personalizaciones de línea, estados, totales y beneficio. | `catalog`, `customers` |
 | `payments` | Cobros (pagos parciales) de un pedido: pagado y pendiente. | `sales` |
 | `purchasing` | Lotes al fabricante: agrupar líneas pendientes, generar el Excel, recepción. | `sales` |
-| `reports` | Informes de solo lectura: venta, coste y beneficio por periodo y por lote, y trabajo pendiente. | `sales`, `payments`, `purchasing` |
+| `resale` | Stock y reventa: prendas compradas para revender (por ejemplo en Vinted) y camisetas que el cliente ya no quiere. | `sales`, `purchasing` |
+| `reports` | Informes de solo lectura: venta, coste y beneficio por periodo y por lote, y trabajo pendiente. | `sales`, `payments`, `purchasing`, `resale` |
 
 ### Estructura interna de cada módulo
 
@@ -94,7 +95,7 @@ purchasing
   (shippingCost es editable; el valor por defecto, normalmente 4,00 €, lo propone el frontend, no el backend)
 ```
 
-**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Si no llega del fabricante vuelve de `ORDERED` a `PENDING`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (qué hacer si el cliente ya no la quiere está pendiente de decidir: stock o pérdida).
+**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Si no llega del fabricante vuelve de `ORDERED` a `PENDING`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (si el cliente ya no la quiere, cuando llega pasa a stock: Paso 9).
 
 **Estado del pedido:** se guarda `OPEN` o `CANCELLED`, y además se calcula su **progreso** a partir de las camisetas no canceladas: `PENDING` (todas por pedir), `IN_PROGRESS`, `READY_TO_DELIVER` (todas recibidas o entregadas), `COMPLETED` (todas entregadas) o `CANCELLED`, con un recuento de camisetas por estado.
 
@@ -187,7 +188,7 @@ Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `s
    - Test obligatorio: lote de 10 camisetas en el que llegan 9 → 9 `RECEIVED`, 1 vuelve a pendientes, aparece como no llegada en el lote y se puede meter en otro lote.
    - Si la que faltó llega después por su cuenta (por ejemplo, tras reclamarla): `POST /api/purchasing/batches/{id}/missing-lines/{lineId}/arrived` la devuelve a su lote como recibida y el envío se reparte también con ella. Un lote en el que no ha llegado ninguna camiseta no se puede dar por recibido.
 
-Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no quiere (pasarla a stock o darla por perdida manteniendo su coste). Hoy no se puede cancelar.
+Decidido: una camiseta ya pedida que el cliente ya no quiere pasa a stock cuando llega (Paso 9).
 
 ### Paso 8 — Informes · rama `feature/reports`
 
@@ -202,6 +203,14 @@ Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no
    - `GET /api/reports/batches` — lotes no descartados, del más reciente al más antiguo, con camisetas, venta, coste, envío y beneficio.
    - `GET /api/reports/pending` — camisetas por pedir, por recibir y por entregar; pedidos e importe por cobrar; e importe por devolver (lo cobrado de más, por ejemplo de un pedido cancelado).
 
+### Paso 9 — Stock y reventa · rama `feature/resale`
+
+Diseño: [docs/superpowers/specs/2026-10-19-resale-design.md](superpowers/specs/2026-10-19-resale-design.md).
+
+- Prendas compradas para revender (por ejemplo en Vinted): alta con coste y precio anunciado, venta con precio final (puede ser más bajo por el regateo) y beneficio.
+- Una camiseta recibida que el cliente ya no quiere pasa a stock. Se elige si el cliente la paga igualmente (lo normal: la prenda entra con coste 0) o si se le devuelve el dinero (entra con su coste más su parte del envío).
+- Los informes muestran lo vendido del stock, su beneficio y el dinero parado en stock.
+
 ---
 
 ## 5. Después del MVP
@@ -210,6 +219,7 @@ Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no
 - **Frontend Angular** en un repositorio aparte, consumiendo esta API.
 - **Seguridad:** Spring Security con login y JWT.
 - **Despliegue:** Dockerfile, perfil `prod`, front y back desplegados, HTTPS y copias de seguridad.
+- **Bastante más adelante — automatización y WhatsApp:** respuestas automáticas o un chatbot con la WhatsApp Business Platform (Cloud API) de Meta. Responder dentro de las 24 h siguientes a un mensaje del cliente es gratis; escribir primero con plantillas se paga por mensaje. Necesita un número propio para la API y la app desplegada con HTTPS. Mientras tanto, la app gratuita WhatsApp Business ya tiene mensajes automáticos sencillos. Nada de librerías no oficiales: pueden bloquear el número.
 
 ---
 
