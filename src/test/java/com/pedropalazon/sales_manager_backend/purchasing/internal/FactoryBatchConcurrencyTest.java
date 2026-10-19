@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.pedropalazon.sales_manager_backend.catalog.ClothingSize;
 import com.pedropalazon.sales_manager_backend.catalog.internal.ProductService;
 import com.pedropalazon.sales_manager_backend.customers.internal.CustomerService;
+import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchStatus;
 import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import com.pedropalazon.sales_manager_backend.sales.internal.OrderLineDraft;
 import com.pedropalazon.sales_manager_backend.sales.internal.SalesOrderService;
