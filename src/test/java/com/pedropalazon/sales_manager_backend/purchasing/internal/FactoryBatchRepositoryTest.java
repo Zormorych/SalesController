@@ -3,6 +3,7 @@ package com.pedropalazon.sales_manager_backend.purchasing.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchStatus;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

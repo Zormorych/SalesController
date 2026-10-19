@@ -1,6 +1,7 @@
 package com.pedropalazon.sales_manager_backend.purchasing.internal;
 
 import com.pedropalazon.sales_manager_backend.catalog.ClothingSize;
+import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchStatus;
 import com.pedropalazon.sales_manager_backend.sales.LineStatus;
 import com.pedropalazon.sales_manager_backend.sales.OrderLineSnapshot;
 import java.math.BigDecimal;

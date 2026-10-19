@@ -1,5 +1,6 @@
 package com.pedropalazon.sales_manager_backend.purchasing.internal;
 
+import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchStatus;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,8 @@ public interface FactoryBatchRepository extends JpaRepository<FactoryBatch, Long
     Optional<FactoryBatch> findByIdForUpdate(@Param("id") Long id);
 
     List<FactoryBatch> findAllByOrderByIdDesc();
+
+    List<FactoryBatch> findByStatusNotOrderByIdDesc(FactoryBatchStatus status);
 
     // Camisetas que ya están en algún lote (los lotes cancelados liberan las suyas)
     @Query("select l from FactoryBatch b join b.lineIds l")

@@ -1,5 +1,6 @@
 package com.pedropalazon.sales_manager_backend.purchasing.internal;
 
+import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
