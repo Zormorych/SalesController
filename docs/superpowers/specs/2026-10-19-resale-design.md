@@ -42,7 +42,7 @@ En la API y en la documentación el apartado se llama **"Stock y reventa"**. En 
 ## Decisiones del usuario
 
 - Una camiseta pedida que el cliente ya no quiere va a stock, no se da por perdida. En stock vale −coste ("me la como") hasta que se revenda.
-- Al pasarla a stock se elige si el cliente la paga igualmente (lo normal, porque cobra antes de pedir) o si se le devuelve el dinero (caso puntual).
+- Al pasarla a stock se elige si el cliente la paga igualmente o si no se le cobra (se le devuelve lo que hubiera pagado). Por defecto, no se le cobra (decisión del usuario).
 - Las prendas de stock se dan de alta a mano con su coste y se venden indicando el precio final.
 - La venta de stock va aparte de los pedidos de clientes.
 - Nombre del apartado: "Stock y reventa".
@@ -91,7 +91,7 @@ En la API y en la documentación el apartado se llama **"Stock y reventa"**. En 
 
 ### Pasar a stock una camiseta de un pedido
 
-`POST /api/resale/items/from-order-line` con `lineId`, `customerPays` (por defecto `true`) y, opcionalmente, `askingPrice`.
+`POST /api/resale/items/from-order-line` con `lineId`, `customerPays` (por defecto `false`: no se le cobra) y, opcionalmente, `askingPrice`.
 
 - **Solo se aceptan camisetas `RECEIVED`.** Si está pedida pero aún no ha llegado, se espera a que llegue y entonces se pasa. Así no hay que tocar la recepción de lotes. Las de otros estados dan 409.
 - La línea pasa a un estado nuevo, uno por opción: `STOCKED_PAID` (el cliente la paga) o `STOCKED_REFUNDED` (se le devuelve el dinero). En el resto del documento, "`MOVED_TO_STOCK`" se refiere a cualquiera de los dos.
@@ -101,9 +101,9 @@ En la API y en la documentación el apartado se llama **"Stock y reventa"**. En 
   - Fecha de compra: hoy.
   - El coste depende de la opción (ver abajo).
 
-**Dos opciones (decisión del usuario).** Casi siempre cobra antes de pedir y casi nunca devuelve el dinero.
+**Dos opciones (decisión del usuario).** Se elige en cada caso; si no se indica, no se le cobra al cliente.
 
-| | `customerPays = true` (por defecto) | `customerPays = false` (caso puntual) |
+| | `customerPays = true` | `customerPays = false` (por defecto) |
 |---|---|---|
 | Significado | El cliente la paga igualmente; el usuario se queda la camiseta y el dinero. | Se le devuelve al cliente lo que hubiera pagado. |
 | En el pedido | **Sigue contando como vendida**: suma en el total, en el resumen de ventas y en los totales del lote. Para el progreso cuenta como terminada, igual que una entregada. | Cuenta **igual que una cancelada**: no suma en el total, ni en el resumen, ni en los totales del lote, y no cuenta en el progreso. Lo cobrado de más aparece en "por devolver". |

@@ -5,7 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
-// customerPays: el cliente la paga igualmente (por defecto) o se le devuelve el dinero. askingPrice es opcional
+// customerPays: si el cliente la paga igualmente. Por defecto no: se le devuelve lo que hubiera pagado.
+// askingPrice es opcional
 public record MoveOrderLineToStockRequest(
         @NotNull(message = "La camiseta (lineId) es obligatoria")
         Long lineId,
@@ -17,6 +18,6 @@ public record MoveOrderLineToStockRequest(
         BigDecimal askingPrice) {
 
     boolean customerPaysOrDefault() {
-        return customerPays == null || customerPays;
+        return customerPays != null && customerPays;
     }
 }

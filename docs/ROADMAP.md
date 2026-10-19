@@ -225,7 +225,7 @@ Diseño: [docs/superpowers/specs/2026-10-19-resale-design.md](superpowers/specs/
    - Alta con coste y precio anunciado; editar; vender con el precio final (`/sell`); deshacer la venta (`/unsell`); listar por estado.
    - Migración `V8`.
 4. `feat: move unwanted order shirts to resale stock`:
-   - `POST /api/resale/items/from-order-line` con `lineId`, `customerPays` (por defecto `true`) y `askingPrice`.
+   - `POST /api/resale/items/from-order-line` con `lineId`, `customerPays` (por defecto `false`: no se le cobra) y `askingPrice`.
    - Solo camisetas recibidas.
    - Coste en stock: 0,00 si el cliente la paga; si no, su coste más su parte del envío.
 5. `feat: add resale figures to reports`:

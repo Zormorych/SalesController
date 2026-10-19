@@ -90,7 +90,7 @@ class ResaleFromOrderLineApiTest {
 
     @Test
     void givenReceivedShirt_whenMovedToStockWithCustomerPaying_thenItemCostsZero() throws Exception {
-        moveToStock("{\"lineId\":%d,\"askingPrice\":25}".formatted(personalizedLine))
+        moveToStock("{\"lineId\":%d,\"customerPays\":true,\"askingPrice\":25}".formatted(personalizedLine))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.origin").value("ORDER_LINE"))
                 .andExpect(jsonPath("$.salesOrderLineId").value(personalizedLine))
@@ -106,9 +106,11 @@ class ResaleFromOrderLineApiTest {
                 .andExpect(jsonPath("$.lines[0].status").value("STOCKED_PAID"));
     }
 
+    // Por defecto no se le cobra al cliente: la camiseta sale del pedido y entra al stock con su coste y su envío
     @Test
-    void givenReceivedShirt_whenMovedToStockWithRefund_thenItemCostsLineCostPlusShippingShare() throws Exception {
-        moveToStock("{\"lineId\":%d,\"customerPays\":false}".formatted(personalizedLine))
+    void givenReceivedShirt_whenMovedToStockByDefault_thenCustomerIsNotChargedAndItemCostsLineCostPlusShippingShare()
+            throws Exception {
+        moveToStock("{\"lineId\":%d}".formatted(personalizedLine))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.purchaseCost").value(10.40))
                 .andExpect(jsonPath("$.askingPrice").value(nullValue()));
