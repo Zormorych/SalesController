@@ -72,6 +72,15 @@ public class ResaleItem {
         update(draft);
     }
 
+    // Camiseta de un pedido que el cliente ya no quiso: entra hoy en stock con el coste que se le asigne
+    public static ResaleItem fromOrderLine(Long salesOrderLineId, String name, String size, BigDecimal purchaseCost,
+            BigDecimal askingPrice) {
+        ResaleItem item = new ResaleItem(new ResaleItemDraft(name, size, null, purchaseCost, null, askingPrice));
+        item.origin = ResaleItemOrigin.ORDER_LINE;
+        item.salesOrderLineId = salesOrderLineId;
+        return item;
+    }
+
     public void update(ResaleItemDraft draft) {
         this.name = draft.name().trim();
         this.size = blankToNull(draft.size());

@@ -44,6 +44,13 @@ class ResaleItemController {
         return service.create(request.toDraft());
     }
 
+    // Camiseta recibida que el cliente ya no quiere
+    @PostMapping("/from-order-line")
+    @ResponseStatus(HttpStatus.CREATED)
+    ResaleItemView moveFromOrderLine(@Valid @RequestBody MoveOrderLineToStockRequest request) {
+        return service.moveFromOrderLine(request.lineId(), request.customerPaysOrDefault(), request.askingPrice());
+    }
+
     @PutMapping("/{id}")
     ResaleItemView update(@PathVariable Long id, @Valid @RequestBody ResaleItemRequest request) {
         return service.update(id, request.toDraft());

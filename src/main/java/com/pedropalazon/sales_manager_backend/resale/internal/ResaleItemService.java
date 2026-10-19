@@ -1,10 +1,14 @@
 package com.pedropalazon.sales_manager_backend.resale.internal;
 
+import com.pedropalazon.sales_manager_backend.purchasing.PurchasingApi;
+import com.pedropalazon.sales_manager_backend.sales.OrderLineSnapshot;
+import com.pedropalazon.sales_manager_backend.sales.SalesOrderApi;
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,9 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResaleItemService {
 
     private final ResaleItemRepository repository;
+    private final SalesOrderApi salesOrderApi;
+    private final PurchasingApi purchasingApi;
 
-    public ResaleItemService(ResaleItemRepository repository) {
+    public ResaleItemService(ResaleItemRepository repository, SalesOrderApi salesOrderApi, PurchasingApi purchasingApi) {
         this.repository = repository;
+        this.salesOrderApi = salesOrderApi;
+        this.purchasingApi = purchasingApi;
     }
 
     @Transactional(readOnly = true)
@@ -62,6 +70,31 @@ public class ResaleItemService {
         }
         item.unsell();
         return ResaleItemView.of(item);
+    }
+
+    // Una camiseta recibida que el cliente ya no quiere pasa a stock. Si la paga igualmente, su coste ya está en
+    // la venta del pedido y la prenda entra a 0; si se le devuelve el dinero, entra con su coste más su envío
+    @Transactional
+    public ResaleItemView moveFromOrderLine(Long lineId, boolean customerPays, BigDecimal askingPrice) {
+        OrderLineSnapshot line = salesOrderApi.moveLineToStock(lineId, customerPays);
+        BigDecimal cost = customerPays
+                ? BigDecimal.ZERO
+                : line.totalCost().add(purchasingApi.shippingShareOf(lineId));
+        ResaleItem item = ResaleItem.fromOrderLine(lineId, nameOf(line), line.size().getLabel(), cost, askingPrice);
+        return ResaleItemView.of(repository.save(item));
+    }
+
+    // "Camiseta Player · Selección Española blanca · WILLIAMS JR 17"; una personalización sin texto va por su nombre
+    private static String nameOf(OrderLineSnapshot line) {
+        String name = line.productName() + " · " + line.kitName();
+        if (line.customizations().isEmpty()) {
+            return name;
+        }
+        return name + " · " + line.customizations().stream()
+                .map(customization -> customization.customText() == null || customization.customText().isBlank()
+                        ? customization.name()
+                        : customization.customText())
+                .collect(Collectors.joining(", "));
     }
 
     private ResaleItem find(Long id) {
