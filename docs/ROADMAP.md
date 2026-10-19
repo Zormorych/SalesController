@@ -29,7 +29,7 @@ Objetivos:
 | `sales` | Pedidos de cliente, líneas, personalizaciones de línea, estados, totales y beneficio. | `catalog`, `customers` |
 | `payments` | Cobros (pagos parciales) de un pedido: pagado y pendiente. | `sales` |
 | `purchasing` | Lotes al fabricante: agrupar líneas pendientes, generar el Excel, recepción. | `sales` |
-| `reports` | Informes de solo lectura: ventas, costes y beneficio por periodo, pedido o lote. | `sales`, `payments`, `purchasing` |
+| `reports` | Informes de solo lectura: venta, coste y beneficio por periodo y por lote, y trabajo pendiente. | `sales`, `payments`, `purchasing` |
 
 ### Estructura interna de cada módulo
 
@@ -191,10 +191,16 @@ Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no
 
 ### Paso 8 — Informes · rama `feature/reports`
 
-1. `feat: sales, cost and profit summary by date range` — el coste incluye el envío repartido.
-2. `feat: profit by batch` — incluye el envío del lote.
-3. `feat: pending counts (to order, to receive, to deliver, to collect)`
-4. `test: cover report calculations`
+1. `feat: expose sales data for reports` — `SalesOrderApi` gana `findActiveLinesOrderedBetween`, `countActiveLinesByStatus` y `findAllOrders`.
+2. `feat: expose payment and batch figures for reports` — nuevas `PaymentApi` (cobrado por pedido y cobrado entre fechas) y `PurchasingApi` (envío de cada camiseta y totales por lote). `FactoryBatchStatus` pasa a la API pública de `purchasing`.
+3. `feat: add sales, batch and pending work reports` — módulo `reports` con tres endpoints de solo lectura:
+   - `GET /api/reports/summary?from&to` — pedidos, camisetas, venta, coste, envío, beneficio y cobrado del periodo (por defecto, el mes actual; `from` posterior a `to` da 400).
+     - Cuentan las camisetas no canceladas de pedidos no cancelados cuya **fecha de pedido** está en el periodo.
+     - El envío es el que les toca en su lote (mismo reparto por céntimos que el detalle del lote); 0 si aún no están en ninguno.
+     - Beneficio = venta − coste − envío.
+     - Cobrado = cobros no anulados con **fecha de cobro** en el periodo, aunque el pedido sea de otro mes.
+   - `GET /api/reports/batches` — lotes no descartados, del más reciente al más antiguo, con camisetas, venta, coste, envío y beneficio.
+   - `GET /api/reports/pending` — camisetas por pedir, por recibir y por entregar; pedidos e importe por cobrar; e importe por devolver (lo cobrado de más, por ejemplo de un pedido cancelado).
 
 ---
 
