@@ -94,7 +94,7 @@ En la API y en la documentación el apartado se llama **"Stock y reventa"**. En 
 `POST /api/resale/items/from-order-line` con `lineId`, `customerPays` (por defecto `true`) y, opcionalmente, `askingPrice`.
 
 - **Solo se aceptan camisetas `RECEIVED`.** Si está pedida pero aún no ha llegado, se espera a que llegue y entonces se pasa. Así no hay que tocar la recepción de lotes. Las de otros estados dan 409.
-- La línea pasa a un estado nuevo, `MOVED_TO_STOCK`, y guarda cuál de las dos opciones se eligió.
+- La línea pasa a un estado nuevo, uno por opción: `STOCKED_PAID` (el cliente la paga) o `STOCKED_REFUNDED` (se le devuelve el dinero). En el resto del documento, "`MOVED_TO_STOCK`" se refiere a cualquiera de los dos.
 - La prenda de stock se crea con:
   - Nombre: producto + equipación + personalizaciones. Por ejemplo "Camiseta Fan · Selección Española blanca · WILLIAMS JR 17".
   - Talla: la etiqueta de la talla.
