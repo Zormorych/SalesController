@@ -12,4 +12,7 @@ public interface PurchasingApi {
 
     // Totales de cada lote, del más reciente al más antiguo
     List<FactoryBatchTotals> findBatchTotals();
+
+    // Parte del envío de una camiseta en su lote (0,00 si no está en ninguno). Una camiseta pasada a stock la conserva
+    BigDecimal shippingShareOf(Long lineId);
 }

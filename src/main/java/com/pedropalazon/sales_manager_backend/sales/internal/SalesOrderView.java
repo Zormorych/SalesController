@@ -37,7 +37,8 @@ public final class SalesOrderView {
     }
 
     // Camisetas del pedido en cada estado: lo que falta por pedir, recibir o entregar
-    public record LineCounts(long pending, long ordered, long received, long delivered, long cancelled) {
+    // stocked: pasadas a stock, tanto si el cliente las paga como si se le devuelve el dinero
+    public record LineCounts(long pending, long ordered, long received, long delivered, long cancelled, long stocked) {
     }
 
     static Details details(SalesOrder order, CustomerSummary customer) {

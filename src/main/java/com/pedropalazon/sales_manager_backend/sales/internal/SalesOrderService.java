@@ -100,9 +100,9 @@ public class SalesOrderService {
     public SalesOrderView.Details cancel(Long id) {
         SalesOrder order = findOpen(id);
         // Una camiseta ya pedida al fabricante se fabrica y se paga igual: cancelarla falsearía el coste
-        // y el envío de su lote. Qué hacer si el cliente ya no la quiere (stock, pérdida...) está pendiente de decidir.
+        // y el envío de su lote. Si el cliente ya no la quiere, cuando llega se pasa a stock.
         boolean hasShirtsAlreadyOrdered = order.getLines().stream()
-                .anyMatch(line -> !line.isPending() && !line.isCancelled());
+                .anyMatch(line -> !line.isPending() && line.countsAsSale());
         if (hasShirtsAlreadyOrdered) {
             throw new BusinessRuleException("El pedido %s tiene camisetas ya pedidas al fabricante y no se puede cancelar"
                     .formatted(order.getOrderNumber()));
@@ -133,6 +133,9 @@ public class SalesOrderService {
         }
         if (line.isCancelled()) {
             throw new BusinessRuleException("La línea %d está cancelada".formatted(lineId));
+        }
+        if (line.getStatus() == LineStatus.STOCKED_PAID || line.getStatus() == LineStatus.STOCKED_REFUNDED) {
+            throw new BusinessRuleException("La línea %d se ha pasado a stock".formatted(lineId));
         }
         if (line.getStatus() != LineStatus.RECEIVED) {
             throw new BusinessRuleException("La línea %d todavía no se ha recibido".formatted(lineId));

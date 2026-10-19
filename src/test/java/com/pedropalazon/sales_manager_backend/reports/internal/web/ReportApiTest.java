@@ -11,6 +11,8 @@ import com.pedropalazon.sales_manager_backend.customers.internal.CustomerService
 import com.pedropalazon.sales_manager_backend.payments.internal.PaymentService;
 import com.pedropalazon.sales_manager_backend.payments.internal.PaymentSummary;
 import com.pedropalazon.sales_manager_backend.purchasing.internal.FactoryBatchService;
+import com.pedropalazon.sales_manager_backend.resale.internal.ResaleItemDraft;
+import com.pedropalazon.sales_manager_backend.resale.internal.ResaleItemService;
 import com.pedropalazon.sales_manager_backend.sales.internal.OrderLineDraft;
 import com.pedropalazon.sales_manager_backend.sales.internal.SalesOrderService;
 import com.pedropalazon.sales_manager_backend.sales.internal.SalesOrderView;
@@ -52,7 +54,12 @@ class ReportApiTest {
     @Autowired
     private PaymentService paymentService;
 
+    @Autowired
+    private ResaleItemService resaleItemService;
+
     private Long batchId;
+    private SalesOrderView.Details orderA;
+    private SalesOrderView.Details orderB;
 
     // A (05/10): Player 17,00/7,70 + Fan 15,00/6,50 · B (20/10): Fan · C (28/09): Fan, cobrado el 01/10
     // D (10/10): Fan, cobrado 10 € y cancelado · lote con A y B (4,50 € de envío) enviado
@@ -63,8 +70,8 @@ class ReportApiTest {
         Long fan = productService.create("Camiseta Fan", new BigDecimal("15.00"), new BigDecimal("6.50")).getId();
         Long customerId = customerService.create("Ana Pérez", null, null).getId();
 
-        SalesOrderView.Details orderA = order(customerId, LocalDate.of(2026, 10, 5), line(player), line(fan));
-        SalesOrderView.Details orderB = order(customerId, LocalDate.of(2026, 10, 20), line(fan));
+        orderA = order(customerId, LocalDate.of(2026, 10, 5), line(player), line(fan));
+        orderB = order(customerId, LocalDate.of(2026, 10, 20), line(fan));
         SalesOrderView.Details orderC = order(customerId, LocalDate.of(2026, 9, 28), line(fan));
         SalesOrderView.Details orderD = order(customerId, LocalDate.of(2026, 10, 10), line(fan));
 
@@ -162,6 +169,56 @@ class ReportApiTest {
                 .andExpect(jsonPath("$.ordersToCollect").value(2))
                 .andExpect(jsonPath("$.amountToCollect").value(27.00))
                 .andExpect(jsonPath("$.amountToRefund").value(10.00));
+    }
+
+    @Test
+    void givenVintedItems_whenGettingReports_thenResaleProfitAndStockAppear() throws Exception {
+        Long jacket = resaleItemService.create(new ResaleItemDraft("Chaqueta Nike vintage", null, null,
+                new BigDecimal("11.70"), LocalDate.of(2026, 10, 2), new BigDecimal("20.00"))).id();
+        resaleItemService.sell(jacket, new BigDecimal("17.70"), LocalDate.of(2026, 10, 15));
+        resaleItemService.create(new ResaleItemDraft("Sudadera Adidas", null, null, new BigDecimal("9.00"), null, null));
+
+        mockMvc.perform(get("/api/reports/summary").param("from", "2026-10-01").param("to", "2026-10-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profit").value(21.80))
+                .andExpect(jsonPath("$.resale.items").value(1))
+                .andExpect(jsonPath("$.resale.sale").value(17.70))
+                .andExpect(jsonPath("$.resale.cost").value(11.70))
+                .andExpect(jsonPath("$.resale.profit").value(6.00))
+                .andExpect(jsonPath("$.totalProfit").value(27.80));
+        mockMvc.perform(get("/api/reports/pending"))
+                .andExpect(jsonPath("$.itemsInStock").value(1))
+                .andExpect(jsonPath("$.stockValue").value(9.00));
+    }
+
+    // La Fan de A pasa a stock devolviendo el dinero (sale de pedidos y lote, entra al stock con 6,50 + 1,50 de envío)
+    // y la de B pasa pagándola el cliente (sigue siendo venta, entra al stock a 0,00)
+    @Test
+    void givenShirtsMovedToStock_whenGettingReports_thenNothingCountsTwice() throws Exception {
+        batchService.receive(batchId, List.of());
+        resaleItemService.moveFromOrderLine(orderA.lines().get(1).id(), false, null);
+        resaleItemService.moveFromOrderLine(orderB.lines().get(0).id(), true, null);
+
+        mockMvc.perform(get("/api/reports/summary").param("from", "2026-10-01").param("to", "2026-10-31"))
+                .andExpect(jsonPath("$.shirts").value(2))
+                .andExpect(jsonPath("$.sale").value(32.00))
+                .andExpect(jsonPath("$.cost").value(14.20))
+                .andExpect(jsonPath("$.shipping").value(3.00))
+                .andExpect(jsonPath("$.profit").value(14.80))
+                .andExpect(jsonPath("$.totalProfit").value(14.80));
+        mockMvc.perform(get("/api/reports/batches"))
+                .andExpect(jsonPath("$[0].shirts").value(2))
+                .andExpect(jsonPath("$[0].sale").value(32.00))
+                .andExpect(jsonPath("$[0].shipping").value(3.00))
+                .andExpect(jsonPath("$[0].profit").value(14.80));
+        mockMvc.perform(get("/api/reports/pending"))
+                .andExpect(jsonPath("$.shirtsToReceive").value(0))
+                .andExpect(jsonPath("$.shirtsToDeliver").value(1))
+                .andExpect(jsonPath("$.ordersToCollect").value(1))
+                .andExpect(jsonPath("$.amountToCollect").value(15.00))
+                .andExpect(jsonPath("$.amountToRefund").value(13.00))
+                .andExpect(jsonPath("$.itemsInStock").value(2))
+                .andExpect(jsonPath("$.stockValue").value(8.00));
     }
 
     private SalesOrderView.Details order(Long customerId, LocalDate date, OrderLineDraft... lines) {

@@ -9,6 +9,7 @@ import com.pedropalazon.sales_manager_backend.customers.internal.CustomerService
 import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchStatus;
 import com.pedropalazon.sales_manager_backend.purchasing.FactoryBatchTotals;
 import com.pedropalazon.sales_manager_backend.purchasing.PurchasingApi;
+import com.pedropalazon.sales_manager_backend.sales.SalesOrderApi;
 import com.pedropalazon.sales_manager_backend.sales.internal.OrderLineDraft;
 import com.pedropalazon.sales_manager_backend.sales.internal.SalesOrderService;
 import com.pedropalazon.sales_manager_backend.sales.internal.SalesOrderView;
@@ -31,6 +32,9 @@ class PurchasingApiServiceTest {
 
     @Autowired
     private PurchasingApi purchasingApi;
+
+    @Autowired
+    private SalesOrderApi salesOrderApi;
 
     @Autowired
     private FactoryBatchService batchService;
@@ -129,6 +133,40 @@ class PurchasingApiServiceTest {
                     assertThat(totals.sale()).isEqualByComparingTo("12.00");
                     assertThat(totals.profit()).isEqualByComparingTo("3.00");
                 });
+    }
+
+    // Una camiseta que pasa a stock viajó en el lote: sigue contando para repartir el envío, así que las demás no pagan más
+    @Test
+    void givenBatchOfThreeWithOneMovedToStock_whenGettingShares_thenSplitIsUnchanged() {
+        batchService.receive(batchId, List.of());
+        salesOrderApi.moveLineToStock(batchedLines.get(0), false);
+        salesOrderApi.moveLineToStock(batchedLines.get(1), true);
+
+        assertThat(purchasingApi.shippingSharesByLine())
+                .containsOnlyKeys(batchedLines)
+                .allSatisfy((lineId, share) -> assertThat(share).isEqualByComparingTo("1.50"));
+        assertThat(purchasingApi.shippingShareOf(batchedLines.get(0))).isEqualTo(new BigDecimal("1.50"));
+    }
+
+    // Si se le devuelve el dinero al cliente, la camiseta y su envío pasan al stock: dejan de contar en el lote
+    @Test
+    void givenStockedRefundedLine_whenGettingBatchTotals_thenItsSaleCostAndShippingAreLeftOut() {
+        batchService.receive(batchId, List.of());
+        salesOrderApi.moveLineToStock(batchedLines.get(0), false);
+        salesOrderApi.moveLineToStock(batchedLines.get(1), true);
+
+        assertThat(purchasingApi.findBatchTotals()).singleElement().satisfies(totals -> {
+            assertThat(totals.shirts()).isEqualTo(2);
+            assertThat(totals.sale()).isEqualByComparingTo("30.00");
+            assertThat(totals.cost()).isEqualByComparingTo("13.00");
+            assertThat(totals.shipping()).isEqualByComparingTo("3.00");
+            assertThat(totals.profit()).isEqualByComparingTo("14.00");
+        });
+    }
+
+    @Test
+    void givenLineWithoutBatch_whenGettingShareOf_thenZero() {
+        assertThat(purchasingApi.shippingShareOf(discardedLine)).isEqualTo(new BigDecimal("0.00"));
     }
 
     @Test

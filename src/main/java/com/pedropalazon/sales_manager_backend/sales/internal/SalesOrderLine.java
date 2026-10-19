@@ -103,12 +103,22 @@ public class SalesOrderLine {
         this.status = LineStatus.DELIVERED;
     }
 
+    // El cliente ya no la quiere: pasa a stock. Si la paga igualmente sigue contando como venta
+    public void moveToStock(boolean customerPays) {
+        this.status = customerPays ? LineStatus.STOCKED_PAID : LineStatus.STOCKED_REFUNDED;
+    }
+
     SalesOrder getOrder() {
         return order;
     }
 
     public boolean isCancelled() {
         return status == LineStatus.CANCELLED;
+    }
+
+    // Suma en el total del pedido: ni cancelada ni pasada a stock devolviendo el dinero
+    public boolean countsAsSale() {
+        return status != LineStatus.CANCELLED && status != LineStatus.STOCKED_REFUNDED;
     }
 
     public boolean isPending() {

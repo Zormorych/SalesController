@@ -15,7 +15,7 @@ class SalesOrderProgressTest {
         SalesOrder order = orderWithLines(2);
 
         assertThat(order.progress()).isEqualTo(SalesOrderProgress.PENDING);
-        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(2, 0, 0, 0, 0));
+        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(2, 0, 0, 0, 0, 0));
     }
 
     @Test
@@ -26,7 +26,7 @@ class SalesOrderProgressTest {
         order.getLines().get(1).markReceived();
 
         assertThat(order.progress()).isEqualTo(SalesOrderProgress.IN_PROGRESS);
-        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(1, 1, 1, 0, 0));
+        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(1, 1, 1, 0, 0, 0));
     }
 
     @Test
@@ -52,7 +52,7 @@ class SalesOrderProgressTest {
         });
 
         assertThat(order.progress()).isEqualTo(SalesOrderProgress.COMPLETED);
-        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(0, 0, 0, 2, 1));
+        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(0, 0, 0, 2, 1, 0));
     }
 
     @Test
@@ -70,6 +70,40 @@ class SalesOrderProgressTest {
         order.getLines().get(0).returnToPending();
 
         assertThat(order.progress()).isEqualTo(SalesOrderProgress.PENDING);
+    }
+
+    @Test
+    void givenShirtMovedToStockPaidByCustomer_whenCheckingProgress_thenCountsAsFinishedAndKeepsItsSale() {
+        SalesOrder order = receivedOrderWithLines(2);
+        order.getLines().get(0).moveToStock(true);
+
+        assertThat(order.progress()).isEqualTo(SalesOrderProgress.READY_TO_DELIVER);
+        assertThat(order.totalSale()).isEqualByComparingTo("30.00");
+        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(0, 0, 1, 0, 0, 1));
+
+        order.getLines().get(1).markDelivered();
+        assertThat(order.progress()).isEqualTo(SalesOrderProgress.COMPLETED);
+    }
+
+    @Test
+    void givenShirtMovedToStockWithRefund_whenCheckingProgress_thenCountsAsCancelled() {
+        SalesOrder order = receivedOrderWithLines(2);
+        order.getLines().get(0).moveToStock(false);
+        order.getLines().get(1).markDelivered();
+
+        assertThat(order.progress()).isEqualTo(SalesOrderProgress.COMPLETED);
+        assertThat(order.totalSale()).isEqualByComparingTo("15.00");
+        assertThat(order.activeLineCount()).isEqualTo(1);
+        assertThat(order.lineCounts()).isEqualTo(new SalesOrderView.LineCounts(0, 0, 0, 1, 0, 1));
+    }
+
+    private static SalesOrder receivedOrderWithLines(int count) {
+        SalesOrder order = orderWithLines(count);
+        order.getLines().forEach(line -> {
+            line.markOrdered();
+            line.markReceived();
+        });
+        return order;
     }
 
     private static SalesOrder orderWithLines(int count) {

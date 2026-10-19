@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class SalesOrderApiService implements SalesOrderApi {
 
+    // Camisetas que no suman en el pedido: canceladas o pasadas a stock devolviendo el dinero
+    private static final List<LineStatus> NOT_A_SALE = List.of(LineStatus.CANCELLED, LineStatus.STOCKED_REFUNDED);
+
     private final SalesOrderService salesOrderService;
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderLineRepository lineRepository;
@@ -100,9 +103,23 @@ class SalesOrderApiService implements SalesOrderApi {
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public OrderLineSnapshot moveLineToStock(Long lineId, boolean customerPays) {
+        SalesOrderLine line = changeStatus(List.of(lineId), LineStatus.RECEIVED,
+                "La línea %d no está recibida: solo una camiseta ya recibida puede pasar a stock",
+                moved -> moved.moveToStock(customerPays)).get(0);
+        // Si se le devuelve el dinero y era la última camiseta que le quedaba, el pedido ya no tiene nada
+        SalesOrder order = line.getOrder();
+        if (!customerPays && order.activeLineCount() == 0) {
+            order.cancel();
+        }
+        return snapshotsOf(List.of(line)).get(0);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<OrderLineSnapshot> findActiveLinesOrderedBetween(LocalDate from, LocalDate to) {
-        return snapshotsOf(lineRepository.findOrderedBetween(LineStatus.CANCELLED, SalesOrderStatus.OPEN, from, to));
+        return snapshotsOf(lineRepository.findOrderedBetween(NOT_A_SALE, SalesOrderStatus.OPEN, from, to));
     }
 
     @Override
@@ -112,7 +129,7 @@ class SalesOrderApiService implements SalesOrderApi {
         for (Object[] row : lineRepository.countByStatusInOrdersWithStatus(SalesOrderStatus.OPEN)) {
             counts.put((LineStatus) row[0], (Long) row[1]);
         }
-        counts.remove(LineStatus.CANCELLED);
+        NOT_A_SALE.forEach(counts::remove);
         return counts;
     }
 
@@ -124,7 +141,7 @@ class SalesOrderApiService implements SalesOrderApi {
 
     // Cambia el estado de varias camisetas de golpe: todas deben estar en el estado esperado y en pedidos
     // no cancelados; si alguna no lo está, no se cambia ninguna
-    private void changeStatus(Collection<Long> lineIds, LineStatus expected, String notInExpectedStatusMessage,
+    private List<SalesOrderLine> changeStatus(Collection<Long> lineIds, LineStatus expected, String notInExpectedStatusMessage,
             Consumer<SalesOrderLine> change) {
         List<SalesOrderLine> lines = findAllOrFail(lineIds);
         // Bloquea sus pedidos y después recarga su estado (y en cascada el de sus líneas): quien llama puede
@@ -139,6 +156,7 @@ class SalesOrderApiService implements SalesOrderApi {
                     throw new BusinessRuleException(notInExpectedStatusMessage.formatted(line.getId()));
                 });
         lines.forEach(change);
+        return lines;
     }
 
     private List<SalesOrderLine> findAllOrFail(Collection<Long> lineIds) {
