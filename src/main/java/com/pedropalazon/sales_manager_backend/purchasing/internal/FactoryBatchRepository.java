@@ -25,6 +25,9 @@ public interface FactoryBatchRepository extends JpaRepository<FactoryBatch, Long
 
     List<FactoryBatch> findByStatusNotOrderByIdDesc(FactoryBatchStatus status);
 
+    @Query("select b from FactoryBatch b join b.lineIds l where l = :lineId and b.status <> :excluded")
+    Optional<FactoryBatch> findContainingLine(@Param("lineId") Long lineId, @Param("excluded") FactoryBatchStatus excluded);
+
     // Camisetas que ya están en algún lote (los lotes cancelados liberan las suyas)
     @Query("select l from FactoryBatch b join b.lineIds l")
     Set<Long> findAssignedLineIds();

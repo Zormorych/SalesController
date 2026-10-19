@@ -49,23 +49,27 @@ public final class FactoryBatchView {
                 batch.getShippingCost());
     }
 
+    // El envío se reparte entre todas las camisetas no canceladas, también las pasadas a stock (viajaron en el lote).
+    // En los totales no cuentan las pasadas a stock devolviendo el dinero: su coste y su envío son ya del stock.
     static Details details(FactoryBatch batch, List<OrderLineSnapshot> orderLines, List<OrderLineSnapshot> missing) {
-        long activeCount = orderLines.stream().filter(line -> line.status() != LineStatus.CANCELLED).count();
-        List<BigDecimal> shares = ShippingAllocation.split(batch.getShippingCost(), (int) activeCount);
+        long shippedCount = orderLines.stream().filter(line -> line.status() != LineStatus.CANCELLED).count();
+        List<BigDecimal> shares = ShippingAllocation.split(batch.getShippingCost(), (int) shippedCount);
         List<Line> lines = new ArrayList<>();
+        long activeCount = 0;
         BigDecimal sale = ZERO;
         BigDecimal cost = ZERO;
         BigDecimal shipping = ZERO;
-        int activeIndex = 0;
+        int shippedIndex = 0;
         for (OrderLineSnapshot orderLine : orderLines) {
             boolean cancelled = orderLine.status() == LineStatus.CANCELLED;
-            BigDecimal share = cancelled ? ZERO : shares.get(activeIndex++);
+            BigDecimal share = cancelled ? ZERO : shares.get(shippedIndex++);
             lines.add(new Line(orderLine.lineId(), orderLine.orderId(), orderLine.orderNumber(), orderLine.orderDate(),
                     orderLine.customerName(), orderLine.productName(), orderLine.kitName(), orderLine.size(),
                     orderLine.size().getLabel(), orderLine.status(), orderLine.customizations(),
                     orderLine.totalSale(), orderLine.totalCost(), share,
                     orderLine.totalSale().subtract(orderLine.totalCost()).subtract(share)));
-            if (!cancelled) {
+            if (!cancelled && orderLine.status() != LineStatus.STOCKED_REFUNDED) {
+                activeCount++;
                 sale = sale.add(orderLine.totalSale());
                 cost = cost.add(orderLine.totalCost());
                 shipping = shipping.add(share);

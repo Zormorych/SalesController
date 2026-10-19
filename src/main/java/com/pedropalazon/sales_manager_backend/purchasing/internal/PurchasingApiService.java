@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class PurchasingApiService implements PurchasingApi {
 
+    private static final BigDecimal ZERO = new BigDecimal("0.00");
+
     private final FactoryBatchRepository repository;
     private final SalesOrderApi salesOrderApi;
 
@@ -49,9 +51,24 @@ class PurchasingApiService implements PurchasingApi {
                 .toList();
     }
 
-    // Detalle de todos los lotes no descartados, leyendo sus camisetas de una sola vez
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal shippingShareOf(Long lineId) {
+        return repository.findContainingLine(lineId, FactoryBatchStatus.CANCELLED)
+                .map(batch -> detailsOf(List.of(batch)).get(0))
+                .flatMap(batch -> batch.lines().stream()
+                        .filter(line -> line.lineId().equals(lineId))
+                        .map(FactoryBatchView.Line::shippingShare)
+                        .findFirst())
+                .orElse(ZERO);
+    }
+
     private List<FactoryBatchView.Details> activeBatches() {
-        List<FactoryBatch> batches = repository.findByStatusNotOrderByIdDesc(FactoryBatchStatus.CANCELLED);
+        return detailsOf(repository.findByStatusNotOrderByIdDesc(FactoryBatchStatus.CANCELLED));
+    }
+
+    // Detalle de varios lotes, leyendo sus camisetas de una sola vez
+    private List<FactoryBatchView.Details> detailsOf(List<FactoryBatch> batches) {
         Set<Long> lineIds = new HashSet<>();
         batches.forEach(batch -> {
             lineIds.addAll(batch.getLineIds());
