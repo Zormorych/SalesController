@@ -93,9 +93,14 @@ purchasing
                     (+ camisetas que no llegaron: factory_batch_missing_lines)
   (cada SalesOrderLine pertenece como mucho a un lote)
   (shippingCost es editable; el valor por defecto, normalmente 4,00 €, lo propone el frontend, no el backend)
+
+resale
+  ResaleItem        id, name, size (texto libre), notes, origin (MANUAL, ORDER_LINE), salesOrderLineId (único),
+                    purchaseCost, purchaseDate, askingPrice, status (AVAILABLE, SOLD), salePrice, saleDate
+                    (beneficio = salePrice − purchaseCost, solo si está vendida)
 ```
 
-**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Si no llega del fabricante vuelve de `ORDERED` a `PENDING`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (si el cliente ya no la quiere, cuando llega pasa a stock: Paso 9).
+**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Si no llega del fabricante vuelve de `ORDERED` a `PENDING`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (si el cliente ya no la quiere, cuando llega pasa a stock: `STOCKED_PAID` si la paga igualmente o `STOCKED_REFUNDED` si se le devuelve el dinero; Paso 9).
 
 **Estado del pedido:** se guarda `OPEN` o `CANCELLED`, y además se calcula su **progreso** a partir de las camisetas no canceladas: `PENDING` (todas por pedir), `IN_PROGRESS`, `READY_TO_DELIVER` (todas recibidas o entregadas), `COMPLETED` (todas entregadas) o `CANCELLED`, con un recuento de camisetas por estado.
 
@@ -207,9 +212,25 @@ Decidido: una camiseta ya pedida que el cliente ya no quiere pasa a stock cuando
 
 Diseño: [docs/superpowers/specs/2026-10-19-resale-design.md](superpowers/specs/2026-10-19-resale-design.md).
 
-- Prendas compradas para revender (por ejemplo en Vinted): alta con coste y precio anunciado, venta con precio final (puede ser más bajo por el regateo) y beneficio.
-- Una camiseta recibida que el cliente ya no quiere pasa a stock. Se elige si el cliente la paga igualmente (lo normal: la prenda entra con coste 0) o si se le devuelve el dinero (entra con su coste más su parte del envío).
-- Los informes muestran lo vendido del stock, su beneficio y el dinero parado en stock.
+1. `feat: move received shirts to stock from sales orders`:
+   - Estados de línea nuevos: `STOCKED_PAID` (el cliente la paga igualmente: sigue siendo una venta y cuenta como terminada) y `STOCKED_REFUNDED` (se le devuelve el dinero: cuenta como cancelada).
+   - Si con `STOCKED_REFUNDED` el pedido se queda sin camisetas, se cancela solo.
+   - `SalesOrderApi.moveLineToStock(lineId, customerPays)`.
+2. `feat: keep shipping split when shirts move to stock`:
+   - El envío del lote se sigue repartiendo entre todas las camisetas que viajaron.
+   - Una `STOCKED_REFUNDED` deja de contar en los totales del lote; su parte del envío pasa al stock.
+   - `PurchasingApi.shippingShareOf(lineId)`.
+3. `feat: add resale items bought to resell`:
+   - Módulo `resale` ("Stock y reventa", `/api/resale/items`).
+   - Alta con coste y precio anunciado; editar; vender con el precio final (`/sell`); deshacer la venta (`/unsell`); listar por estado.
+   - Migración `V8`.
+4. `feat: move unwanted order shirts to resale stock`:
+   - `POST /api/resale/items/from-order-line` con `lineId`, `customerPays` (por defecto `true`) y `askingPrice`.
+   - Solo camisetas recibidas.
+   - Coste en stock: 0,00 si el cliente la paga; si no, su coste más su parte del envío.
+5. `feat: add resale figures to reports`:
+   - El resumen gana `resale` (vendido por fecha de venta) y `totalProfit`.
+   - Lo pendiente gana `itemsInStock` y `stockValue`.
 
 ---
 
