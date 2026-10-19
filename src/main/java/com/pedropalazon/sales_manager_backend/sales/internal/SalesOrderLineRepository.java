@@ -17,12 +17,12 @@ public interface SalesOrderLineRepository extends JpaRepository<SalesOrderLine, 
     List<SalesOrderLine> findByStatusInOrdersWithStatus(@Param("status") LineStatus status,
             @Param("orderStatus") SalesOrderStatus orderStatus);
 
-    // Camisetas no canceladas de pedidos con el estado indicado y fecha de pedido en el rango (ambos incluidos)
+    // Camisetas que cuentan como venta (no excluidas) de pedidos con el estado indicado y fecha de pedido en el rango (ambos incluidos)
     @Query("""
             select l from SalesOrderLine l join fetch l.order o
-            where l.status <> :excludedStatus and o.status = :orderStatus and o.orderDate between :from and :to
+            where l.status not in :excludedStatuses and o.status = :orderStatus and o.orderDate between :from and :to
             order by o.orderDate, o.id, l.id""")
-    List<SalesOrderLine> findOrderedBetween(@Param("excludedStatus") LineStatus excludedStatus,
+    List<SalesOrderLine> findOrderedBetween(@Param("excludedStatuses") Collection<LineStatus> excludedStatuses,
             @Param("orderStatus") SalesOrderStatus orderStatus, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     @Query("select l.status, count(l) from SalesOrderLine l where l.order.status = :orderStatus group by l.status")

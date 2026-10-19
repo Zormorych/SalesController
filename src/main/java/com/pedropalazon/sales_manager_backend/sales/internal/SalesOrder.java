@@ -83,9 +83,10 @@ public class SalesOrder {
         this.notes = notes == null || notes.isBlank() ? null : notes.trim();
     }
 
+    // Solo se cancelan las camisetas pendientes: las pasadas a stock (devolviendo el dinero) se quedan así
     public void cancel() {
         this.status = SalesOrderStatus.CANCELLED;
-        lines.forEach(SalesOrderLine::cancel);
+        lines.stream().filter(SalesOrderLine::isPending).forEach(SalesOrderLine::cancel);
     }
 
     public boolean isCancelled() {
@@ -105,10 +106,12 @@ public class SalesOrder {
             return SalesOrderProgress.CANCELLED;
         }
         List<LineStatus> statuses = activeLines().map(SalesOrderLine::getStatus).toList();
-        if (statuses.stream().allMatch(status -> status == LineStatus.DELIVERED)) {
+        // Una camiseta pasada a stock que el cliente paga igualmente ya no hay que entregarla: está terminada
+        if (statuses.stream().allMatch(status -> status == LineStatus.DELIVERED || status == LineStatus.STOCKED_PAID)) {
             return SalesOrderProgress.COMPLETED;
         }
-        if (statuses.stream().allMatch(status -> status == LineStatus.RECEIVED || status == LineStatus.DELIVERED)) {
+        if (statuses.stream().allMatch(status -> status == LineStatus.RECEIVED || status == LineStatus.DELIVERED
+                || status == LineStatus.STOCKED_PAID)) {
             return SalesOrderProgress.READY_TO_DELIVER;
         }
         if (statuses.stream().allMatch(status -> status == LineStatus.PENDING)) {
@@ -120,7 +123,8 @@ public class SalesOrder {
     // Cuántas camisetas faltan por pedir, recibir o entregar
     public SalesOrderView.LineCounts lineCounts() {
         return new SalesOrderView.LineCounts(countLines(LineStatus.PENDING), countLines(LineStatus.ORDERED),
-                countLines(LineStatus.RECEIVED), countLines(LineStatus.DELIVERED), countLines(LineStatus.CANCELLED));
+                countLines(LineStatus.RECEIVED), countLines(LineStatus.DELIVERED), countLines(LineStatus.CANCELLED),
+                countLines(LineStatus.STOCKED_PAID) + countLines(LineStatus.STOCKED_REFUNDED));
     }
 
     private long countLines(LineStatus status) {
@@ -140,7 +144,7 @@ public class SalesOrder {
     }
 
     private Stream<SalesOrderLine> activeLines() {
-        return lines.stream().filter(line -> !line.isCancelled());
+        return lines.stream().filter(SalesOrderLine::countsAsSale);
     }
 
     private BigDecimal sumOfActiveLines(Function<SalesOrderLine, BigDecimal> amount) {

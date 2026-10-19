@@ -34,6 +34,11 @@ public interface SalesOrderApi {
     // Debe estar pendiente. Exige una transacción.
     void markLateArrivalReceived(Long lineId);
 
+    // Una camiseta recibida que el cliente ya no quiere pasa a stock. customerPays: la paga igualmente (sigue
+    // siendo una venta) o se le devuelve el dinero (deja de contar y, si era la última, el pedido se cancela).
+    // Debe estar recibida. Exige una transacción. Devuelve la camiseta ya en su estado nuevo.
+    OrderLineSnapshot moveLineToStock(Long lineId, boolean customerPays);
+
     // --- Datos para informes ---
 
     // Camisetas no canceladas de pedidos no cancelados con fecha de pedido entre from y to (ambos incluidos)
