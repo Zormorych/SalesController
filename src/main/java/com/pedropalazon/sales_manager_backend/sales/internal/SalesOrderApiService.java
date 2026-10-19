@@ -9,7 +9,9 @@ import com.pedropalazon.sales_manager_backend.sales.SalesOrderSnapshot;
 import com.pedropalazon.sales_manager_backend.shared.BusinessRuleException;
 import com.pedropalazon.sales_manager_backend.shared.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +97,29 @@ class SalesOrderApiService implements SalesOrderApi {
     public void markLateArrivalReceived(Long lineId) {
         changeStatus(List.of(lineId), LineStatus.PENDING, "La línea %d no está pendiente: no se puede dar por recibida",
                 SalesOrderLine::markReceived);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderLineSnapshot> findActiveLinesOrderedBetween(LocalDate from, LocalDate to) {
+        return snapshotsOf(lineRepository.findOrderedBetween(LineStatus.CANCELLED, SalesOrderStatus.OPEN, from, to));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<LineStatus, Long> countActiveLinesByStatus() {
+        Map<LineStatus, Long> counts = new EnumMap<>(LineStatus.class);
+        for (Object[] row : lineRepository.countByStatusInOrdersWithStatus(SalesOrderStatus.OPEN)) {
+            counts.put((LineStatus) row[0], (Long) row[1]);
+        }
+        counts.remove(LineStatus.CANCELLED);
+        return counts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SalesOrderSnapshot> findAllOrders() {
+        return salesOrderRepository.findAll().stream().map(SalesOrderApiService::snapshotOf).toList();
     }
 
     // Cambia el estado de varias camisetas de golpe: todas deben estar en el estado esperado y en pedidos

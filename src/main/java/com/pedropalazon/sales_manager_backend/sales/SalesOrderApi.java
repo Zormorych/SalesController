@@ -1,7 +1,9 @@
 package com.pedropalazon.sales_manager_backend.sales;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 // API pública de ventas para otros módulos (por ejemplo, cobros necesita el total de un pedido)
 public interface SalesOrderApi {
@@ -31,4 +33,15 @@ public interface SalesOrderApi {
     // Una camiseta que no llegó con su lote (y volvió a pendientes) llega después por su cuenta.
     // Debe estar pendiente. Exige una transacción.
     void markLateArrivalReceived(Long lineId);
+
+    // --- Datos para informes ---
+
+    // Camisetas no canceladas de pedidos no cancelados con fecha de pedido entre from y to (ambos incluidos)
+    List<OrderLineSnapshot> findActiveLinesOrderedBetween(LocalDate from, LocalDate to);
+
+    // Camisetas de pedidos no cancelados agrupadas por estado (cuántas faltan por pedir, recibir, entregar...)
+    Map<LineStatus, Long> countActiveLinesByStatus();
+
+    // Todos los pedidos, cancelados incluidos (con total 0)
+    List<SalesOrderSnapshot> findAllOrders();
 }
