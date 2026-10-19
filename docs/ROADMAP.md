@@ -88,14 +88,15 @@ payments
   Payment           id, salesOrderId, amount, paymentDate, status (REGISTERED, VOIDED), notes
 
 purchasing
-  FactoryBatch      id, batchNumber, createdAt, sentAt, status (OPEN, SENT, CANCELLED; RECEIVED en el Paso 7), shippingCost, notes
+  FactoryBatch      id, batchNumber, createdAt, sentAt, receivedAt, status (OPEN, SENT, RECEIVED, CANCELLED), shippingCost, notes
+                    (+ camisetas que no llegaron: factory_batch_missing_lines)
   (cada SalesOrderLine pertenece como mucho a un lote)
   (shippingCost es editable; el valor por defecto, normalmente 4,00 €, lo propone el frontend, no el backend)
 ```
 
-**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado, desde el Paso 5) → `RECEIVED` → `DELIVERED`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (qué hacer con ella se decide en el Paso 7).
+**Estado de una línea:** `PENDING` → `ORDERED` (está en un lote enviado) → `RECEIVED` → `DELIVERED`. Si no llega del fabricante vuelve de `ORDERED` a `PENDING`. Solo una línea `PENDING` se puede cancelar: una camiseta ya pedida al fabricante se fabrica y se paga igual, así que ni ella ni su pedido se pueden cancelar (qué hacer si el cliente ya no la quiere está pendiente de decidir: stock o pérdida).
 
-**Estado del pedido:** se deriva del estado de sus líneas, salvo `CANCELLED`, que es explícito. Hasta el Paso 7 el pedido solo distingue `OPEN` y `CANCELLED`, y las líneas `PENDING`, `ORDERED` y `CANCELLED`.
+**Estado del pedido:** se guarda `OPEN` o `CANCELLED`, y además se calcula su **progreso** a partir de las camisetas no canceladas: `PENDING` (todas por pedir), `IN_PROGRESS`, `READY_TO_DELIVER` (todas recibidas o entregadas), `COMPLETED` (todas entregadas) o `CANCELLED`, con un recuento de camisetas por estado.
 
 **Cálculos** (no se guardan en BD, se calculan):
 
@@ -180,12 +181,13 @@ Lo cobrado se sirve desde el módulo de cobros y no en el detalle del pedido: `s
 
 ### Paso 7 — Recepción y entrega · rama `feature/receive-deliver`
 
-1. `feat: mark batch as received` — al recibir un lote se marca **cada camiseta**: recibida o **no llegada**. Puede faltar alguna sin que el fabricante avise (por ejemplo, 1 de 10). Las recibidas pasan a `RECEIVED`; las no llegadas no se dan por recibidas y vuelven a quedar pendientes de pedir, para reclamarlas o meterlas en el siguiente lote, sin perder el registro de en qué lote faltaron. El lote queda recibido aunque falte alguna.
-   - Test obligatorio: lote de 10 camisetas en el que llegan 9 → 9 `RECEIVED`, 1 vuelve a pendientes y aparece como no llegada en el detalle del lote.
-2. `feat: mark lines as delivered`
-3. `feat: derive order status from its lines`
-4. `feat: decide what happens to an ordered shirt the customer no longer wants` — hoy está bloqueado (no se puede cancelar una camiseta ya pedida); opciones: pasarla a stock o darla por perdida manteniendo su coste.
-5. `test: cover status transitions`
+1. `feat: track received shirts and order progress` — estados `RECEIVED` y `DELIVERED`; `SalesOrderApi` gana `markLinesReceived` y `returnLinesToPending` (todo o nada, con bloqueo de los pedidos); progreso del pedido y recuento de camisetas por estado en el detalle y el listado.
+2. `feat: deliver received shirts to customers` — `POST /api/sales/orders/{id}/lines/{lineId}/deliver` y `POST /api/sales/orders/{id}/deliver` (todas las recibidas). Entregar una que no ha llegado da 409.
+3. `feat: receive factory batches recording missing shirts` — `POST /api/purchasing/batches/{id}/receive` con `missingLineIds` (vacío = ha llegado todo). Puede faltar alguna sin que el fabricante avise: las que faltan vuelven a pendientes de pedir, salen del lote (no se les asigna envío) y quedan en `missingLines` del lote. Migración `V7`.
+   - Test obligatorio: lote de 10 camisetas en el que llegan 9 → 9 `RECEIVED`, 1 vuelve a pendientes, aparece como no llegada en el lote y se puede meter en otro lote.
+   - Si la que faltó llega después por su cuenta (por ejemplo, tras reclamarla): `POST /api/purchasing/batches/{id}/missing-lines/{lineId}/arrived` la devuelve a su lote como recibida y el envío se reparte también con ella. Un lote en el que no ha llegado ninguna camiseta no se puede dar por recibido.
+
+Pendiente de decidir: qué hacer con una camiseta ya pedida que el cliente ya no quiere (pasarla a stock o darla por perdida manteniendo su coste). Hoy no se puede cancelar.
 
 ### Paso 8 — Informes · rama `feature/reports`
 

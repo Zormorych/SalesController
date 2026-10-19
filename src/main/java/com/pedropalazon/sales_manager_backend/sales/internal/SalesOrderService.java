@@ -100,9 +100,10 @@ public class SalesOrderService {
     public SalesOrderView.Details cancel(Long id) {
         SalesOrder order = findOpen(id);
         // Una camiseta ya pedida al fabricante se fabrica y se paga igual: cancelarla falsearía el coste
-        // y el envío de su lote. Qué hacer con ella (stock, pérdida...) se decidirá con la recepción (Paso 7).
-        boolean hasOrderedLines = order.getLines().stream().anyMatch(line -> line.getStatus() == LineStatus.ORDERED);
-        if (hasOrderedLines) {
+        // y el envío de su lote. Qué hacer si el cliente ya no la quiere (stock, pérdida...) está pendiente de decidir.
+        boolean hasShirtsAlreadyOrdered = order.getLines().stream()
+                .anyMatch(line -> !line.isPending() && !line.isCancelled());
+        if (hasShirtsAlreadyOrdered) {
             throw new BusinessRuleException("El pedido %s tiene camisetas ya pedidas al fabricante y no se puede cancelar"
                     .formatted(order.getOrderNumber()));
         }
@@ -122,10 +123,47 @@ public class SalesOrderService {
         return order;
     }
 
-    private static SalesOrderLine findPendingLine(SalesOrder order, Long lineId) {
-        SalesOrderLine line = order.findLine(lineId)
+    // Entrega al cliente una camiseta que ya ha llegado del fabricante
+    @Transactional
+    public SalesOrderView.Details deliverLine(Long id, Long lineId) {
+        SalesOrder order = findOpen(id);
+        SalesOrderLine line = findLine(order, lineId);
+        if (line.getStatus() == LineStatus.DELIVERED) {
+            throw new BusinessRuleException("La línea %d ya está entregada".formatted(lineId));
+        }
+        if (line.isCancelled()) {
+            throw new BusinessRuleException("La línea %d está cancelada".formatted(lineId));
+        }
+        if (line.getStatus() != LineStatus.RECEIVED) {
+            throw new BusinessRuleException("La línea %d todavía no se ha recibido".formatted(lineId));
+        }
+        line.markDelivered();
+        return detailsOf(order);
+    }
+
+    // Entrega de golpe todas las camisetas recibidas del pedido (las que aún no han llegado se quedan como están)
+    @Transactional
+    public SalesOrderView.Details deliverAll(Long id) {
+        SalesOrder order = findOpen(id);
+        List<SalesOrderLine> received = order.getLines().stream()
+                .filter(line -> line.getStatus() == LineStatus.RECEIVED)
+                .toList();
+        if (received.isEmpty()) {
+            throw new BusinessRuleException("El pedido %s no tiene camisetas recibidas pendientes de entregar"
+                    .formatted(order.getOrderNumber()));
+        }
+        received.forEach(SalesOrderLine::markDelivered);
+        return detailsOf(order);
+    }
+
+    private static SalesOrderLine findLine(SalesOrder order, Long lineId) {
+        return order.findLine(lineId)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe la línea %d en el pedido %s"
                         .formatted(lineId, order.getOrderNumber())));
+    }
+
+    private static SalesOrderLine findPendingLine(SalesOrder order, Long lineId) {
+        SalesOrderLine line = findLine(order, lineId);
         if (!line.isPending()) {
             throw new BusinessRuleException("La línea %d ya no está pendiente y no se puede modificar"
                     .formatted(lineId));

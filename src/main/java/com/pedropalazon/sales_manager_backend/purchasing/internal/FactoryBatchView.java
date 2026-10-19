@@ -19,12 +19,18 @@ public final class FactoryBatchView {
     }
 
     public record Summary(Long id, String batchNumber, FactoryBatchStatus status, LocalDateTime createdAt,
-            LocalDateTime sentAt, int lineCount, BigDecimal shippingCost) {
+            LocalDateTime sentAt, LocalDateTime receivedAt, int lineCount, int missingCount, BigDecimal shippingCost) {
     }
 
     public record Details(Long id, String batchNumber, FactoryBatchStatus status, String notes,
-            LocalDateTime createdAt, LocalDateTime sentAt, BigDecimal shippingCost, List<Line> lines,
-            Totals totals) {
+            LocalDateTime createdAt, LocalDateTime sentAt, LocalDateTime receivedAt, BigDecimal shippingCost,
+            List<Line> lines, Totals totals, List<MissingLine> missingLines) {
+    }
+
+    // Camiseta que se pidió en este lote pero no llegó; status es su estado actual (pendiente o ya pedida en otro lote)
+    public record MissingLine(Long lineId, Long orderId, String orderNumber, String customerName, String productName,
+            String kitName, ClothingSize size, String sizeLabel, LineStatus status,
+            List<OrderLineSnapshot.Customization> customizations) {
     }
 
     public record Line(Long lineId, Long orderId, String orderNumber, LocalDate orderDate, String customerName,
@@ -38,10 +44,11 @@ public final class FactoryBatchView {
 
     static Summary summary(FactoryBatch batch) {
         return new Summary(batch.getId(), batch.getBatchNumber(), batch.getStatus(), batch.getCreatedAt(),
-                batch.getSentAt(), batch.getLineIds().size(), batch.getShippingCost());
+                batch.getSentAt(), batch.getReceivedAt(), batch.getLineIds().size(), batch.getMissingLineIds().size(),
+                batch.getShippingCost());
     }
 
-    static Details details(FactoryBatch batch, List<OrderLineSnapshot> orderLines) {
+    static Details details(FactoryBatch batch, List<OrderLineSnapshot> orderLines, List<OrderLineSnapshot> missing) {
         long activeCount = orderLines.stream().filter(line -> line.status() != LineStatus.CANCELLED).count();
         List<BigDecimal> shares = ShippingAllocation.split(batch.getShippingCost(), (int) activeCount);
         List<Line> lines = new ArrayList<>();
@@ -65,6 +72,12 @@ public final class FactoryBatchView {
         }
         Totals totals = new Totals(activeCount, sale, cost, shipping, sale.subtract(cost).subtract(shipping));
         return new Details(batch.getId(), batch.getBatchNumber(), batch.getStatus(), batch.getNotes(),
-                batch.getCreatedAt(), batch.getSentAt(), batch.getShippingCost(), lines, totals);
+                batch.getCreatedAt(), batch.getSentAt(), batch.getReceivedAt(), batch.getShippingCost(), lines, totals,
+                missing.stream().map(FactoryBatchView::missingLine).toList());
+    }
+
+    private static MissingLine missingLine(OrderLineSnapshot line) {
+        return new MissingLine(line.lineId(), line.orderId(), line.orderNumber(), line.customerName(), line.productName(),
+                line.kitName(), line.size(), line.size().getLabel(), line.status(), line.customizations());
     }
 }

@@ -90,6 +90,19 @@ public class SalesOrderLine {
         this.status = LineStatus.ORDERED;
     }
 
+    public void markReceived() {
+        this.status = LineStatus.RECEIVED;
+    }
+
+    // La camiseta no llegó del fabricante: vuelve a estar pendiente de pedir
+    public void returnToPending() {
+        this.status = LineStatus.PENDING;
+    }
+
+    public void markDelivered() {
+        this.status = LineStatus.DELIVERED;
+    }
+
     SalesOrder getOrder() {
         return order;
     }
