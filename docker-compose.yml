@@ -1,6 +1,8 @@
-# Todo el proyecto (base de datos + backend):   docker compose up -d --build
+# Todo (base de datos + backend + frontend):   docker compose up -d --build
+# Sin el frontend:                             docker compose up -d --build postgres app
 # Solo la base de datos (para desarrollar con IntelliJ):   docker compose up -d postgres
-# Los valores entre ${...} se pueden cambiar en un fichero .env (ver .env.example)
+# Los valores entre ${...} se pueden cambiar en un fichero .env (ver .env.example).
+# El frontend se construye desde su propio repositorio (SalesController-web), que debe estar en WEB_DIR
 services:
   postgres:
     image: postgres:17-alpine
@@ -43,6 +45,22 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    restart: unless-stopped
+
+  # Angular servido por nginx. nginx pasa las llamadas /api al backend por la red interna de Docker,
+  # así que el navegador solo habla con el frontend y no hace falta CORS
+  web:
+    build: ${WEB_DIR:-../SalesController-web}
+    image: sales-controller-web:local
+    container_name: sales-controller-web
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      # Dentro de la red de Docker el backend se llama "app" y escucha en su puerto interno, el 8080
+      BACKEND_URL: http://app:8080
+    ports:
+      - "${WEB_PORT:-4200}:80"
     restart: unless-stopped
 
 volumes:
