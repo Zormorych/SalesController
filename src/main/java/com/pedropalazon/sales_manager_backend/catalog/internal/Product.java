@@ -12,6 +12,10 @@ public class Product extends CatalogItem {
     }
 
     public Product(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
-        super(name, salePrice, purchaseCost);
+        this(name, salePrice, purchaseCost, null);
+    }
+
+    public Product(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
+        super(name, salePrice, purchaseCost, description);
     }
 }
