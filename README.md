@@ -8,38 +8,44 @@ Arquitectura, modelo de dominio y pasos de desarrollo: [docs/ROADMAP.md](docs/RO
 
 ## Arrancar con Docker (todo el proyecto, en cualquier equipo)
 
-Solo hace falta **Git** y **Docker Desktop** arrancado. No hay que instalar Java, Maven ni PostgreSQL: Docker compila el backend y levanta la base de datos.
+Solo hace falta **Git** y **Docker Desktop** arrancado. No hay que instalar Java, Maven, Node ni PostgreSQL: Docker compila el backend y el frontend y levanta la base de datos.
 
-1. Descargar el código:
+1. Descargar los dos repositorios, uno al lado del otro:
 
    ```powershell
    git clone https://github.com/Zormorych/SalesController.git
+   git clone https://github.com/Zormorych/SalesController-web.git
    cd SalesController
    ```
 
-2. (Opcional) Cambiar puertos o contraseñas: copiar `.env.example` como `.env` y editarlo. Por ejemplo, `APP_PORT=8081` si el 8080 ya está ocupado.
+2. (Opcional) Cambiar puertos, contraseñas o la carpeta del frontend: copiar `.env.example` como `.env` y editarlo. Por ejemplo, `APP_PORT=8081` si el 8080 ya está ocupado, o `WEB_DIR` si el frontend no está al lado.
 
    ```powershell
    Copy-Item .env.example .env
    ```
 
-3. Construir y arrancar todo:
+3. Construir y arrancar todo (base de datos, backend y frontend):
 
    ```powershell
    docker compose up -d --build
    ```
 
-   La primera vez tarda unos minutos (descarga imágenes y dependencias). El backend espera a que PostgreSQL esté listo y Flyway crea las tablas.
+   La primera vez tarda unos minutos (descarga imágenes y dependencias). El backend espera a que PostgreSQL esté listo y Flyway crea las tablas; el frontend espera al backend.
 
-4. Comprobar que responde: <http://localhost:8080/swagger-ui.html> (o el puerto de `APP_PORT`).
+4. Abrir la aplicación: <http://localhost:4200> (o el puerto de `WEB_PORT`). La API y Swagger siguen en <http://localhost:8080/swagger-ui.html> (o el puerto de `APP_PORT`).
+
+   Desde el móvil, en el mismo wifi: `http://<IP del PC>:4200` (la IP sale con `ipconfig`).
 
 | Para… | Comando |
 |---|---|
 | Ver el estado (`healthy` = funcionando) | `docker compose ps` |
-| Ver los logs del backend | `docker compose logs -f app` |
+| Ver los logs del backend o del frontend | `docker compose logs -f app` / `docker compose logs -f web` |
+| Arrancar sin el frontend | `docker compose up -d --build postgres app` |
 | Parar todo (los datos se conservan) | `docker compose down` |
-| Actualizar a la última versión del código | `git pull` y después `docker compose up -d --build` |
+| Actualizar a la última versión del código | `git pull` en los dos repositorios y después `docker compose up -d --build` |
 | Borrar también los datos (¡irreversible!) | `docker compose down -v` |
+
+Con Docker Desktop configurado para arrancar con Windows, los contenedores vuelven a levantarse solos al encender el PC (`restart: unless-stopped`).
 
 ### Pasar los datos de un equipo a otro
 
