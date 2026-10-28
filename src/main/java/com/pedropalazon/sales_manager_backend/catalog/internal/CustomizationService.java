@@ -11,7 +11,7 @@ public class CustomizationService extends CatalogItemService<Customization> {
     }
 
     @Override
-    protected Customization newItem(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
-        return new Customization(name, salePrice, purchaseCost);
+    protected Customization newItem(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
+        return new Customization(name, salePrice, purchaseCost, description);
     }
 }

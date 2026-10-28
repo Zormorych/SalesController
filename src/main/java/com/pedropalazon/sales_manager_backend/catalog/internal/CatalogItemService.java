@@ -20,7 +20,7 @@ public abstract class CatalogItemService<T extends CatalogItem> {
         this.duplicateNameMessage = duplicateNameMessage;
     }
 
-    protected abstract T newItem(String name, BigDecimal salePrice, BigDecimal purchaseCost);
+    protected abstract T newItem(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description);
 
     @Transactional(readOnly = true)
     public List<T> list(boolean includeInactive) {
@@ -35,17 +35,23 @@ public abstract class CatalogItemService<T extends CatalogItem> {
                 .orElseThrow(() -> new ResourceNotFoundException(notFoundMessage.formatted(id)));
     }
 
+    // Sin descripción (la usan sobre todo los tests)
     @Transactional
     public T create(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
-        ensureNameIsFree(name, null);
-        return repository.save(newItem(name, salePrice, purchaseCost));
+        return create(name, salePrice, purchaseCost, null);
     }
 
     @Transactional
-    public T update(Long id, String name, BigDecimal salePrice, BigDecimal purchaseCost) {
+    public T create(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
+        ensureNameIsFree(name, null);
+        return repository.save(newItem(name, salePrice, purchaseCost, description));
+    }
+
+    @Transactional
+    public T update(Long id, String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
         T item = get(id);
         ensureNameIsFree(name, id);
-        item.update(name, salePrice, purchaseCost);
+        item.update(name, salePrice, purchaseCost, description);
         return item;
     }
 

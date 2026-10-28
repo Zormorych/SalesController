@@ -35,7 +35,7 @@ abstract class CatalogItemController<T extends CatalogItem> {
 
     @PostMapping
     ResponseEntity<CatalogItemResponse> create(@Valid @RequestBody CatalogItemRequest request) {
-        T item = service.create(request.name(), request.salePrice(), request.purchaseCost());
+        T item = service.create(request.name(), request.salePrice(), request.purchaseCost(), request.description());
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(item.getId())
@@ -46,7 +46,8 @@ abstract class CatalogItemController<T extends CatalogItem> {
     @PutMapping("/{id}")
     CatalogItemResponse update(@PathVariable Long id, @Valid @RequestBody CatalogItemRequest request) {
         return CatalogItemResponse.from(
-                service.update(id, request.name(), request.salePrice(), request.purchaseCost()));
+                service.update(id, request.name(), request.salePrice(), request.purchaseCost(),
+                        request.description()));
     }
 
     @PostMapping("/{id}/activate")

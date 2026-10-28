@@ -20,5 +20,8 @@ public record CatalogItemRequest(
         @NotNull(message = "El coste es obligatorio")
         @PositiveOrZero(message = "El coste no puede ser negativo")
         @Digits(integer = 8, fraction = 2, message = "El coste admite como máximo 8 enteros y 2 decimales")
-        BigDecimal purchaseCost) {
+        BigDecimal purchaseCost,
+
+        @Size(max = 1000, message = "La descripción no puede superar 1000 caracteres")
+        String description) {
 }

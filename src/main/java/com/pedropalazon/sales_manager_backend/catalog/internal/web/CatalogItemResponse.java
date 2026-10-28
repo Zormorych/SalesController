@@ -4,10 +4,10 @@ import com.pedropalazon.sales_manager_backend.catalog.internal.CatalogItem;
 import java.math.BigDecimal;
 
 public record CatalogItemResponse(Long id, String name, BigDecimal salePrice, BigDecimal purchaseCost,
-        boolean active) {
+        String description, boolean active) {
 
     static CatalogItemResponse from(CatalogItem item) {
         return new CatalogItemResponse(item.getId(), item.getName(), item.getSalePrice(), item.getPurchaseCost(),
-                item.isActive());
+                item.getDescription(), item.isActive());
     }
 }

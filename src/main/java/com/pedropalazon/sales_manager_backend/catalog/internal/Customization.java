@@ -12,6 +12,10 @@ public class Customization extends CatalogItem {
     }
 
     public Customization(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
-        super(name, salePrice, purchaseCost);
+        this(name, salePrice, purchaseCost, null);
+    }
+
+    public Customization(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
+        super(name, salePrice, purchaseCost, description);
     }
 }

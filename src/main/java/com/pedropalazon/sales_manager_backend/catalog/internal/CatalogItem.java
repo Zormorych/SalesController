@@ -28,6 +28,10 @@ public abstract class CatalogItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal purchaseCost;
 
+    // Texto libre opcional: por ejemplo, la URL del producto en la web del fabricante
+    @Column(length = 1000)
+    private String description;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -40,12 +44,13 @@ public abstract class CatalogItem {
     protected CatalogItem() {
     }
 
-    protected CatalogItem(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
-        update(name, salePrice, purchaseCost);
+    protected CatalogItem(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
+        update(name, salePrice, purchaseCost, description);
     }
 
-    public void update(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
+    public void update(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
         this.name = name.trim();
+        this.description = description == null || description.isBlank() ? null : description.trim();
         this.salePrice = salePrice.setScale(2, RoundingMode.HALF_UP);
         this.purchaseCost = purchaseCost.setScale(2, RoundingMode.HALF_UP);
     }
@@ -72,6 +77,10 @@ public abstract class CatalogItem {
 
     public BigDecimal getPurchaseCost() {
         return purchaseCost;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public boolean isActive() {

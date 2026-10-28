@@ -11,7 +11,7 @@ public class ProductService extends CatalogItemService<Product> {
     }
 
     @Override
-    protected Product newItem(String name, BigDecimal salePrice, BigDecimal purchaseCost) {
-        return new Product(name, salePrice, purchaseCost);
+    protected Product newItem(String name, BigDecimal salePrice, BigDecimal purchaseCost, String description) {
+        return new Product(name, salePrice, purchaseCost, description);
     }
 }

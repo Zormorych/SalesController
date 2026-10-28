@@ -106,6 +106,47 @@ class ProductApiTest {
                 .andExpect(jsonPath("$.title").value("Petición no válida"));
     }
 
+    // La descripción sirve, por ejemplo, para guardar la URL del producto en la web del fabricante
+    @Test
+    void givenDescriptionWithUrl_whenCreatedAndUpdated_thenKeepsIt() throws Exception {
+        String body = """
+                {"name":"Camiseta Retro","salePrice":20,"purchaseCost":9,
+                 "description":"  https://fabricante.example/camiseta-retro-123  "}""";
+        String created = mockMvc.perform(post(PRODUCTS).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description").value("https://fabricante.example/camiseta-retro-123"))
+                .andReturn().getResponse().getContentAsString();
+        long id = ((Number) JsonPath.read(created, "$.id")).longValue();
+
+        mockMvc.perform(put(PRODUCTS + "/" + id).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Camiseta Retro\",\"salePrice\":20,\"purchaseCost\":9,"
+                                + "\"description\":\"Tallas grandes: pedir una más\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value("Tallas grandes: pedir una más"));
+        mockMvc.perform(get(PRODUCTS + "/" + id))
+                .andExpect(jsonPath("$.description").value("Tallas grandes: pedir una más"));
+    }
+
+    @Test
+    void givenNoOrBlankDescription_whenCreated_thenHasNone() throws Exception {
+        mockMvc.perform(post(PRODUCTS).contentType(MediaType.APPLICATION_JSON)
+                        .content(json("Camiseta Fan", "15.00", "6.50")))
+                .andExpect(jsonPath("$.description").doesNotExist());
+        mockMvc.perform(post(PRODUCTS).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Camiseta Kids\",\"salePrice\":12,\"purchaseCost\":5,\"description\":\"  \"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description").doesNotExist());
+    }
+
+    @Test
+    void givenTooLongDescription_whenCreated_thenReturnsBadRequestOnDescription() throws Exception {
+        mockMvc.perform(post(PRODUCTS).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Camiseta Fan\",\"salePrice\":15,\"purchaseCost\":6.5,\"description\":\""
+                                + "x".repeat(1001) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("description"));
+    }
+
     @Test
     void givenExistingProduct_whenUpdatedKeepingItsName_thenReturnsNewPrices() throws Exception {
         long id = create("Camiseta Player", "17.00", "8.00");
