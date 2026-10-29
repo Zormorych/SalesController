@@ -8,9 +8,8 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 
-// orderDate es opcional: si no viene, el pedido se fecha hoy
+// customerId es opcional (pedido para uno mismo); orderDate también: si no viene, el pedido se fecha hoy
 public record CreateSalesOrderRequest(
-        @NotNull(message = "El cliente es obligatorio")
         Long customerId,
 
         LocalDate orderDate,

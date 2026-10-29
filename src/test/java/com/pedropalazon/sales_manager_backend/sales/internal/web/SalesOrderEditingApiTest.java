@@ -84,6 +84,16 @@ class SalesOrderEditingApiTest {
     }
 
     @Test
+    void givenOrderWithCustomer_whenHeaderUpdatedWithoutCustomer_thenCustomerIsRemoved() throws Exception {
+        long orderId = createAndGetId(ORDERS, orderJson(anaId, null, lineJson(fanShirtId, "M", null)));
+
+        mockMvc.perform(put(ORDERS + "/" + orderId).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderDate\":\"2026-10-03\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customer").doesNotExist());
+    }
+
+    @Test
     void givenOrder_whenLineAdded_thenTotalsIncludeIt() throws Exception {
         long orderId = createAndGetId(ORDERS, orderJson(anaId, null, lineJson(fanShirtId, "M", null)));
 

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record UpdateSalesOrderRequest(
-        @NotNull(message = "El cliente es obligatorio")
         Long customerId,
 
         @NotNull(message = "La fecha del pedido es obligatoria")
