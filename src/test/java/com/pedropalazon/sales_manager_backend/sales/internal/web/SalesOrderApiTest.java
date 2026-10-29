@@ -1,5 +1,6 @@
 package com.pedropalazon.sales_manager_backend.sales.internal.web;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -111,6 +112,27 @@ class SalesOrderApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lines[0].productName").value("Camiseta Fan"))
                 .andExpect(jsonPath("$.lines[0].unitSalePrice").value(15.0));
+    }
+
+    // Un pedido para uno mismo no necesita cliente
+    @Test
+    void givenNoCustomer_whenOrderCreated_thenIsCreatedWithoutCustomerAndListedAndPendingToOrder() throws Exception {
+        String body = "{\"lines\":[" + lineJson(fanShirtId, "M", null) + "]}";
+        String created = createOrder(body)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.customer").doesNotExist())
+                .andExpect(jsonPath("$.totals.sale").value(15.0))
+                .andReturn().getResponse().getContentAsString();
+        long orderId = ((Number) JsonPath.read(created, "$.id")).longValue();
+
+        mockMvc.perform(get(ORDERS + "/" + orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customer").doesNotExist());
+        mockMvc.perform(get(ORDERS))
+                .andExpect(jsonPath("$[?(@.id == " + orderId + ")].customerId").value(contains((Object) null)));
+        mockMvc.perform(get("/api/purchasing/pending-lines"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.orderId == " + orderId + ")].customerName").value(contains((Object) null)));
     }
 
     @Test

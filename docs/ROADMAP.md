@@ -78,7 +78,7 @@ customers
   Customer          id, name, phone (normalizado y único, opcional), notes
 
 sales
-  SalesOrder        id, orderNumber (SO-2026-000001), customer, orderDate, status, notes
+  SalesOrder        id, orderNumber (SO-2026-000001), customer (opcional: un pedido puede ser para uno mismo), orderDate, status, notes
   SalesOrderLine    id, order, productId, productName*, kitName (texto libre: "Selección Española blanca 2 estrellas"),
                     size, unitSalePrice*, unitPurchaseCost*, status
   LineCustomization id, line, customizationId, customizationName*, value ("WILLIAMS JR 17"),

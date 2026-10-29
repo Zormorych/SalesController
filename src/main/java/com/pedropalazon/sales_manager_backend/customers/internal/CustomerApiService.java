@@ -4,6 +4,7 @@ import com.pedropalazon.sales_manager_backend.customers.CustomerApi;
 import com.pedropalazon.sales_manager_backend.customers.CustomerSummary;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,8 @@ class CustomerApiService implements CustomerApi {
     @Override
     @Transactional(readOnly = true)
     public Map<Long, CustomerSummary> findCustomers(Collection<Long> customerIds) {
-        return customerRepository.findAllById(customerIds).stream()
+        // Los pedidos sin cliente aportan ids nulos: se ignoran
+        return customerRepository.findAllById(customerIds.stream().filter(Objects::nonNull).toList()).stream()
                 .map(CustomerApiService::summaryOf)
                 .collect(Collectors.toMap(CustomerSummary::id, Function.identity()));
     }

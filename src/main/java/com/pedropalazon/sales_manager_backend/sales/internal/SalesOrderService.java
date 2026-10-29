@@ -32,7 +32,7 @@ public class SalesOrderService {
     @Transactional
     public SalesOrderView.Details create(Long customerId, LocalDate orderDate, String notes,
             List<OrderLineDraft> lines) {
-        CustomerSummary customer = customerApi.getCustomer(customerId);
+        CustomerSummary customer = customerOf(customerId);
         LocalDate date = orderDate != null ? orderDate : LocalDate.now();
         String orderNumber = SalesOrder.formatOrderNumber(date.getYear(), repository.nextOrderSequence());
         SalesOrder order = new SalesOrder(orderNumber, customerId, date, notes);
@@ -61,7 +61,7 @@ public class SalesOrderService {
     @Transactional
     public SalesOrderView.Details updateHeader(Long id, Long customerId, LocalDate orderDate, String notes) {
         SalesOrder order = findOpen(id);
-        CustomerSummary customer = customerApi.getCustomer(customerId);
+        CustomerSummary customer = customerOf(customerId);
         order.updateHeader(customerId, orderDate, notes);
         return SalesOrderView.details(order, customer);
     }
@@ -175,7 +175,12 @@ public class SalesOrderService {
     }
 
     private SalesOrderView.Details detailsOf(SalesOrder order) {
-        return SalesOrderView.details(order, customerApi.getCustomer(order.getCustomerId()));
+        return SalesOrderView.details(order, customerOf(order.getCustomerId()));
+    }
+
+    // Sin cliente (pedido para uno mismo) no hay nada que buscar
+    private CustomerSummary customerOf(Long customerId) {
+        return customerId == null ? null : customerApi.getCustomer(customerId);
     }
 
     private static String customerNameOf(Map<Long, CustomerSummary> customers, Long customerId) {

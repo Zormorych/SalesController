@@ -37,7 +37,7 @@ public class SalesOrder {
     @Column(nullable = false, length = 20, updatable = false)
     private String orderNumber;
 
-    @Column(nullable = false)
+    // Nulo cuando el pedido es para uno mismo
     private Long customerId;
 
     @Column(nullable = false)
